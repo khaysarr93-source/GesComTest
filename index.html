@@ -1,0 +1,1427 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FOX GESCOM - Gestion Commerciale Sénégal</title>
+  <link rel="stylesheet" href="index.css?v=1.1.0">
+  <!-- Chart.js for beautiful analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons for premium modern iconography -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- html2pdf.js for direct PDF generating and downloading -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <!-- Supabase JS Client SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <div class="app-container">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="logo-container">
+        <div class="logo-icon" id="sidebar-logo-container">
+          <!-- Custom default SVG or dynamic Base64 Logo will be rendered by JS -->
+          <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+            <path d="M2 17l10 5 10-5"></path>
+            <path d="M2 12l10 5 10-5"></path>
+          </svg>
+        </div>
+        <div class="logo-text" id="sidebar-company-name-text">FOX GESCOM</div>
+      </div>
+      
+      <nav class="nav-menu">
+        <li class="nav-item active" data-tab="dashboard">
+          <a href="#dashboard">
+            <i data-lucide="layout-dashboard"></i>
+            <span>Tableau de bord</span>
+          </a>
+        </li>
+        <li class="nav-item" data-tab="products">
+          <a href="#products">
+            <i data-lucide="package"></i>
+            <span>Produits / Stock</span>
+          </a>
+        </li>
+        <li class="nav-item" data-tab="clients">
+          <a href="#clients">
+            <i data-lucide="users"></i>
+            <span>Clients</span>
+          </a>
+        </li>
+        <li class="nav-item" data-tab="billing">
+          <a href="#billing">
+            <i data-lucide="file-text"></i>
+            <span>Ventes & Devis</span>
+          </a>
+        </li>
+        <li class="nav-item" data-tab="inventory">
+          <a href="#inventory">
+            <i data-lucide="archive"></i>
+            <span>Inventaire & Log</span>
+          </a>
+        </li>
+        <li class="nav-item" data-tab="settings">
+          <a href="#settings">
+            <i data-lucide="settings"></i>
+            <span>Paramètres</span>
+          </a>
+        </li>
+        <li class="nav-item" data-tab="new-order">
+          <a href="#new-order">
+            <i data-lucide="plus-circle"></i>
+            <span>Nouvelle Vente</span>
+          </a>
+        </li>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-avatar">AD</div>
+        <div class="user-info">
+          <span class="user-name">Amadou DIOP</span>
+          <span class="user-role">Administrateur</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- Top Header -->
+      <header class="main-header">
+        <div class="header-title-area">
+          <h1 id="page-title">Tableau de bord</h1>
+          <p id="page-subtitle">Aperçu global de l'activité commerciale</p>
+        </div>
+        
+        <div class="header-actions">
+          <div class="date-badge" style="display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="calendar"></i>
+            <span id="current-date-display">Chargement...</span>
+            <span style="color: rgba(255,255,255,0.15);">|</span>
+            <i data-lucide="clock" style="color: var(--fox-orange); width: 14px; height: 14px;"></i>
+            <span id="current-time-display" style="font-weight: 700; color: var(--fox-orange);">--:--:--</span>
+          </div>
+
+          <!-- Indicateur de synchronisation Cloud Supabase -->
+          <div class="date-badge" id="cloud-sync-badge" style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer;" title="Statut Supabase">
+            <i data-lucide="cloud"></i>
+            <span id="cloud-sync-text">Mode Local</span>
+          </div>
+
+          <button class="btn btn-primary" id="header-new-sale-btn">
+            <i data-lucide="plus"></i>
+            <span>Nouvelle Vente</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- View 1: Dashboard -->
+      <section id="dashboard" class="tab-content active">
+        <!-- KPI Card Grid -->
+        <div class="card-grid">
+          <div class="kpi-card kpi-sales">
+            <div class="kpi-header">
+              <span class="kpi-title">Ventes Totales</span>
+              <div class="kpi-icon"><i data-lucide="trending-up"></i></div>
+            </div>
+            <div class="kpi-value" id="kpi-total-sales">0 FCFA</div>
+            <div class="kpi-footer">
+              <span class="kpi-trend up"><i data-lucide="arrow-up-right"></i> +12%</span>
+              <span>ce mois-ci</span>
+            </div>
+          </div>
+          
+          <div class="kpi-card kpi-orders">
+            <div class="kpi-header">
+              <span class="kpi-title">Commandes</span>
+              <div class="kpi-icon"><i data-lucide="shopping-bag"></i></div>
+            </div>
+            <div class="kpi-value" id="kpi-orders-count">0</div>
+            <div class="kpi-footer">
+              <span class="kpi-trend up"><i data-lucide="arrow-up-right"></i> +8%</span>
+              <span>depuis le début</span>
+            </div>
+          </div>
+          
+          <div class="kpi-card kpi-basket">
+            <div class="kpi-header">
+              <span class="kpi-title">Panier Moyen</span>
+              <div class="kpi-icon"><i data-lucide="dollar-sign"></i></div>
+            </div>
+            <div class="kpi-value" id="kpi-average-basket">0 FCFA</div>
+            <div class="kpi-footer">
+              <span class="kpi-trend down"><i data-lucide="arrow-down-left"></i> -3%</span>
+              <span>vs mois dernier</span>
+            </div>
+          </div>
+          
+          <div class="kpi-card kpi-stock">
+            <div class="kpi-header">
+              <span class="kpi-title">Stocks Critiques</span>
+              <div class="kpi-icon"><i data-lucide="alert-triangle"></i></div>
+            </div>
+            <div class="kpi-value" id="kpi-critical-stock">0</div>
+            <div class="kpi-footer">
+              <span id="stock-kpi-footer-label">Articles en alerte</span>
+            </div>
+          </div>
+
+          <div class="kpi-card kpi-received">
+            <div class="kpi-header">
+              <span class="kpi-title">Trésorerie (Encaissé)</span>
+              <div class="kpi-icon" style="color: var(--success);"><i data-lucide="check-circle"></i></div>
+            </div>
+            <div class="kpi-value" id="kpi-total-received" style="color: var(--success);">0 FCFA</div>
+            <div class="kpi-footer">
+              <span>Règlements reçus</span>
+            </div>
+          </div>
+          
+          <div class="kpi-card kpi-outstanding">
+            <div class="kpi-header">
+              <span class="kpi-title">Créances Clients</span>
+              <div class="kpi-icon" style="color: var(--danger);"><i data-lucide="clock"></i></div>
+            </div>
+            <div class="kpi-value" id="kpi-total-outstanding" style="color: var(--danger);">0 FCFA</div>
+            <div class="kpi-footer">
+              <span>Reste à recouvrer</span>
+            </div>
+          </div>
+          
+          <div class="kpi-card kpi-margin">
+            <div class="kpi-header">
+              <span class="kpi-title">Marge HT Estimée</span>
+              <div class="kpi-icon" style="color: var(--info);"><i data-lucide="trending-up"></i></div>
+            </div>
+            <div class="kpi-value" id="kpi-total-margin" style="color: var(--info);">0 FCFA</div>
+            <div class="kpi-footer">
+              <span>Bénéfice brut sur ventes</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dashboard Layout Charts + Recent activity -->
+        <div class="dashboard-layout">
+          <!-- Ventes Graphiques -->
+          <div class="glass-card">
+            <div class="card-title-area">
+              <h2><i data-lucide="bar-chart-2"></i> Évolution des ventes (FCFA)</h2>
+              <span class="badge badge-info">Annuel 2026</span>
+            </div>
+            <div class="chart-container">
+              <canvas id="salesChart"></canvas>
+            </div>
+          </div>
+          
+          <!-- Category and Recent activity -->
+          <div class="glass-card">
+            <div class="card-title-area">
+              <h2><i data-lucide="activity"></i> Activités Récentes</h2>
+            </div>
+            <div class="recent-activity-list" id="dashboard-recent-activities">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Third Row: Analytics Breakdown -->
+        <div class="dashboard-layout" style="margin-top: 24px;">
+          <!-- Card 1: Top Selling Products -->
+          <div class="glass-card">
+            <div class="card-title-area">
+              <h2><i data-lucide="award"></i> Top 5 des Produits les plus vendus</h2>
+            </div>
+            <div class="table-responsive">
+              <table class="fox-table" style="font-size: 13px;">
+                <thead>
+                  <tr>
+                    <th>Produit</th>
+                    <th>Catégorie</th>
+                    <th style="text-align: center;">Qté Vendue</th>
+                    <th style="text-align: right;">CA Généré</th>
+                  </tr>
+                </thead>
+                <tbody id="dashboard-top-products-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Card 2: Sales by Category -->
+          <div class="glass-card">
+            <div class="card-title-area">
+              <h2><i data-lucide="pie-chart"></i> Répartition des Ventes par Catégorie</h2>
+            </div>
+            <div id="dashboard-categories-breakdown" style="display: flex; flex-direction: column; gap: 16px; margin-top: 10px;">
+              <!-- Dynamically populated progress bars -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- View 2: Products -->
+      <section id="products" class="tab-content">
+        <div class="glass-card">
+          <div class="search-filter-row">
+            <div class="search-input-wrapper">
+              <i data-lucide="search"></i>
+              <input type="text" class="search-input" id="product-search" placeholder="Rechercher un produit par nom ou code...">
+            </div>
+            <div class="filters-wrapper">
+              <select class="select-input" id="product-filter-category">
+                <option value="all">Toutes les catégories</option>
+              </select>
+              <select class="select-input" id="product-filter-stock">
+                <option value="all">Tous les stocks</option>
+                <option value="in">En Stock</option>
+                <option value="low">Stock Bas</option>
+                <option value="out">Rupture</option>
+              </select>
+              <button class="btn btn-primary" id="btn-add-product">
+                <i data-lucide="plus"></i>
+                <span>Nouveau Produit</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="fox-table">
+              <thead>
+                <tr>
+                  <th>Code / ID</th>
+                  <th>Désignation</th>
+                  <th>Catégorie</th>
+                  <th>Prix Unitaire</th>
+                  <th>Stock Actuel</th>
+                  <th>Stock Min</th>
+                  <th>Statut</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="products-table-body">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- View 3: Clients -->
+      <section id="clients" class="tab-content">
+        <div class="glass-card">
+          <div class="search-filter-row">
+            <div class="search-input-wrapper">
+              <i data-lucide="search"></i>
+              <input type="text" class="search-input" id="client-search" placeholder="Rechercher par nom, email ou ville...">
+            </div>
+            <div class="filters-wrapper">
+              <select class="select-input" id="client-filter-city">
+                <option value="all">Toutes les villes</option>
+              </select>
+              <button class="btn btn-primary" id="btn-add-client">
+                <i data-lucide="plus"></i>
+                <span>Nouveau Client</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="fox-table">
+              <thead>
+                <tr>
+                  <th>Nom / Entreprise</th>
+                  <th>Email</th>
+                  <th>Téléphone</th>
+                  <th>Ville</th>
+                  <th>Adresse</th>
+                  <th>Commandes</th>
+                  <th>Total Achat</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="clients-table-body">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- View 4: Ventes & Devis (Regroupement) -->
+      <section id="billing" class="tab-content">
+        <!-- Sub-tabs navigation -->
+        <div class="sub-tabs-container">
+          <button class="sub-tab-btn active" data-subtab="quotes-list">
+            <i data-lucide="file-text"></i> Devis
+          </button>
+          <button class="sub-tab-btn" data-subtab="invoices">
+            <i data-lucide="file-check"></i> Factures
+          </button>
+        </div>
+
+        <!-- Sub-tab 1: Invoices -->
+        <div id="sub-tab-invoices" class="sub-tab-content">
+          <div class="glass-card">
+            <div class="search-filter-row">
+              <div class="search-input-wrapper">
+                <i data-lucide="search"></i>
+                <input type="text" class="search-input" id="order-search" placeholder="Rechercher par N° Facture ou client...">
+              </div>
+              <div class="filters-wrapper">
+                <select class="select-input" id="order-filter-status">
+                  <option value="all">Tous les statuts</option>
+                  <option value="Payée">Payée</option>
+                  <option value="En attente">En attente</option>
+                  <option value="Partiellement Payée">Partiellement Payée</option>
+                  <option value="Annulée">Annulée</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="fox-table">
+                <thead>
+                  <tr>
+                    <th>N° Facture</th>
+                    <th>Date</th>
+                    <th>Client</th>
+                    <th>Articles</th>
+                    <th>Remise</th>
+                    <th>TVA (18%)</th>
+                    <th>Montant TTC</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="orders-table-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sub-tab 2: Devis -->
+        <div id="sub-tab-quotes-list" class="sub-tab-content active">
+          <div class="glass-card">
+            <div class="search-filter-row">
+              <div class="search-input-wrapper">
+                <i data-lucide="search"></i>
+                <input type="text" class="search-input" id="quote-search" placeholder="Rechercher par N° Devis ou client...">
+              </div>
+              <div class="filters-wrapper">
+                <select class="select-input" id="quote-filter-status">
+                  <option value="all">Tous les statuts</option>
+                  <option value="Brouillon">Brouillon</option>
+                  <option value="Envoyé">Envoyé</option>
+                  <option value="Accepté">Accepté</option>
+                  <option value="Refusé">Refusé</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="fox-table">
+                <thead>
+                  <tr>
+                    <th>N° Devis</th>
+                    <th>Date</th>
+                    <th>Client</th>
+                    <th>Articles</th>
+                    <th>Remise</th>
+                    <th>TVA (18%)</th>
+                    <th>Montant TTC</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="quotes-table-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- View 5: Inventory & Logistics Tab -->
+      <section id="inventory" class="tab-content">
+        <!-- Sub-tabs navigation -->
+        <div class="sub-tabs-container">
+          <button class="sub-tab-btn active" data-subtab="suppliers">
+            <i data-lucide="truck"></i> Fournisseurs
+          </button>
+          <button class="sub-tab-btn" data-subtab="purchase-orders">
+            <i data-lucide="shopping-bag"></i> Commandes Fournisseurs
+          </button>
+          <button class="sub-tab-btn" data-subtab="receptions">
+            <i data-lucide="arrow-down-left"></i> Réceptions de Stock
+          </button>
+          <button class="sub-tab-btn" data-subtab="deliveries">
+            <i data-lucide="truck"></i> Bons de Livraison (BL)
+          </button>
+        </div>
+
+        <!-- Sub-tab 1: Fournisseurs -->
+        <div id="sub-tab-suppliers" class="sub-tab-content active">
+          <div class="glass-card">
+            <div class="search-filter-row">
+              <div class="search-input-wrapper">
+                <i data-lucide="search"></i>
+                <input type="text" class="search-input" id="supplier-search" placeholder="Rechercher fournisseur par nom ou spécialité...">
+              </div>
+              <button class="btn btn-primary" id="btn-add-supplier">
+                <i data-lucide="plus"></i> Nouveau Fournisseur
+              </button>
+            </div>
+            <div class="table-responsive">
+              <table class="fox-table">
+                <thead>
+                  <tr>
+                    <th>Code</th>
+                    <th>Nom Fournisseur</th>
+                    <th>Spécialité</th>
+                    <th>Email</th>
+                    <th>Téléphone</th>
+                    <th>Ville</th>
+                    <th>Adresse</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="suppliers-table-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sub-tab 2: Commandes Fournisseurs -->
+        <div id="sub-tab-purchase-orders" class="sub-tab-content">
+          <div class="glass-card">
+            <div class="search-filter-row">
+              <div class="search-input-wrapper">
+                <i data-lucide="search"></i>
+                <input type="text" class="search-input" id="po-search" placeholder="Rechercher par N° Commande ou fournisseur...">
+              </div>
+              <button class="btn btn-primary" id="btn-add-po">
+                <i data-lucide="plus"></i> Nouvelle Commande
+              </button>
+            </div>
+            <div class="table-responsive">
+              <table class="fox-table">
+                <thead>
+                  <tr>
+                    <th>N° Commande</th>
+                    <th>Date</th>
+                    <th>Fournisseur</th>
+                    <th>Nombre d'Articles</th>
+                    <th>Montant Total (Achat)</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="po-table-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sub-tab 3: Réceptions -->
+        <div id="sub-tab-receptions" class="sub-tab-content">
+          <div class="glass-card">
+            <div class="search-filter-row">
+              <div class="search-input-wrapper">
+                <i data-lucide="search"></i>
+                <input type="text" class="search-input" id="reception-search" placeholder="Rechercher par N° Réception ou fournisseur...">
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="fox-table">
+                <thead>
+                  <tr>
+                    <th>N° Réception</th>
+                    <th>Date</th>
+                    <th>Fournisseur</th>
+                    <th>N° Commande Fourn.</th>
+                    <th>Articles Réceptionnés</th>
+                    <th>Valeur Logistique</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="receptions-table-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sub-tab 4: Bons de Livraison Clients -->
+        <div id="sub-tab-deliveries" class="sub-tab-content">
+          <div class="glass-card">
+            <div class="search-filter-row">
+              <div class="search-input-wrapper">
+                <i data-lucide="search"></i>
+                <input type="text" class="search-input" id="delivery-search" placeholder="Rechercher par N° BL, client ou facture...">
+              </div>
+              <div class="filters-wrapper">
+                <select class="select-input" id="delivery-filter-status">
+                  <option value="all">Tous les statuts</option>
+                  <option value="En préparation">En préparation</option>
+                  <option value="En cours">En cours</option>
+                  <option value="Livré">Livré</option>
+                </select>
+                <button class="btn btn-primary" id="btn-add-delivery">
+                  <i data-lucide="plus"></i> Nouveau Bon de Livraison
+                </button>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="fox-table">
+                <thead>
+                  <tr>
+                    <th>N° Bon de Livraison</th>
+                    <th>Date Génération</th>
+                    <th>Client</th>
+                    <th>N° Facture Vente</th>
+                    <th>Ville de Livraison</th>
+                    <th>Statut Livraison</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="deliveries-table-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- View 6: Settings -->
+      <section id="settings" class="tab-content">
+        <div class="glass-card" style="max-width: 700px; margin: 0 auto;">
+          <div class="card-title-area">
+            <h2><i data-lucide="settings"></i> Paramètres de l'Entreprise</h2>
+          </div>
+          <form id="form-settings">
+            <!-- Logo Upload -->
+            <div class="form-group">
+              <label>Logo de l'entreprise</label>
+              <div class="logo-preview-container">
+                <div class="logo-preview-box" id="settings-logo-preview">
+                  <i data-lucide="image" style="width: 28px; height: 28px;"></i>
+                </div>
+                <div>
+                  <input type="file" id="settings-logo-input" accept="image/*" style="display: none;">
+                  <button type="button" class="btn btn-secondary" onclick="document.getElementById('settings-logo-input').click()">
+                    <i data-lucide="upload"></i> Choisir une image
+                  </button>
+                  <button type="button" class="btn btn-danger" id="btn-delete-logo" style="margin-left: 8px; padding: 10px; display: none;">
+                    <i data-lucide="trash-2"></i>
+                  </button>
+                  <p style="font-size: 11px; color: var(--fox-muted); margin-top: 6px;">Format recommandé : PNG ou JPG carré, max 500 Ko</p>
+                </div>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="settings-company-name">Raison Sociale</label>
+              <input type="text" class="form-control" id="settings-company-name" required placeholder="ex: FOX GESCOM SÉNÉGAL">
+            </div>
+            
+            <div class="form-group">
+              <label for="settings-company-slogan">Slogan / Sous-titre</label>
+              <input type="text" class="form-control" id="settings-company-slogan" required placeholder="ex: Solutions de Gestion & Fournitures Professionnelles">
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label for="settings-company-phone">Téléphone</label>
+                <input type="text" class="form-control" id="settings-company-phone" required placeholder="ex: +221 33 824 00 00">
+              </div>
+              <div class="form-group">
+                <label for="settings-company-email">Email Professionnel</label>
+                <input type="email" class="form-control" id="settings-company-email" required placeholder="ex: contact@entreprise.sn">
+              </div>
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label for="settings-company-website">Site Web (Optionnel)</label>
+                <input type="text" class="form-control" id="settings-company-website" placeholder="ex: www.entreprise.sn">
+              </div>
+              <div class="form-group">
+                <label for="settings-company-city">Ville & Pays</label>
+                <input type="text" class="form-control" id="settings-company-city" required placeholder="ex: Dakar, Sénégal">
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="settings-company-address">Adresse Physique</label>
+              <input type="text" class="form-control" id="settings-company-address" required placeholder="ex: Immeuble Horizon, Rue 12 x Boulevard de la République">
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label for="settings-company-ninea">NINEA</label>
+                <input type="text" class="form-control" id="settings-company-ninea" required placeholder="ex: 0068429 2G3">
+              </div>
+              <div class="form-group">
+                <label for="settings-company-rc">Registre du Commerce (RC)</label>
+                <input type="text" class="form-control" id="settings-company-rc" required placeholder="ex: SN-DKR-2026-B-1284">
+              </div>
+            </div>
+            
+            <!-- VAT toggle configs -->
+            <div class="form-row" style="align-items: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px; margin-top: 10px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="switch-container">
+                  <input type="checkbox" class="switch-checkbox" id="settings-company-vat-subject">
+                  <span>Entreprise soumise à la TVA (Sénégal)</span>
+                </label>
+              </div>
+              <div class="form-group" style="margin-bottom: 0;" id="settings-vat-rate-group">
+                <label for="settings-company-vat-rate">Taux de TVA (%)</label>
+                <input type="number" class="form-control" id="settings-company-vat-rate" min="0" max="100" placeholder="18" style="padding: 10px; width: 100px;">
+              </div>
+            </div>
+            
+            <!-- Monnaie & Préfixes -->
+            <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px; margin-top: 15px;">
+              <h4 style="font-size: 11px; font-weight: 700; color: var(--fox-muted); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Formats & Préfixes de Documents</h4>
+              
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="settings-company-currency">Devise (Symbole)</label>
+                  <input type="text" class="form-control" id="settings-company-currency" required placeholder="ex: FCFA">
+                </div>
+                <div class="form-group">
+                  <label for="settings-prefix-invoice">Préfixe Factures</label>
+                  <input type="text" class="form-control" id="settings-prefix-invoice" required placeholder="ex: F">
+                </div>
+              </div>
+              
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="settings-prefix-quote">Préfixe Devis</label>
+                  <input type="text" class="form-control" id="settings-prefix-quote" required placeholder="ex: D">
+                </div>
+                <div class="form-group">
+                  <label for="settings-prefix-delivery">Préfixe BL</label>
+                  <input type="text" class="form-control" id="settings-prefix-delivery" required placeholder="ex: BL">
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="settings-prefix-po">Préfixe Cde Fournisseur</label>
+                  <input type="text" class="form-control" id="settings-prefix-po" required placeholder="ex: CF">
+                </div>
+                <div class="form-group">
+                  <label for="settings-prefix-reception">Préfixe Réception</label>
+                  <input type="text" class="form-control" id="settings-prefix-reception" required placeholder="ex: BR">
+                </div>
+              </div>
+            </div>
+            
+            <div style="text-align: right; margin-top: 24px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
+              <button type="submit" class="btn btn-primary" style="padding: 12px 24px;">
+                <i data-lucide="save"></i> Sauvegarder les configurations
+              </button>
+            </div>
+          </form>
+
+          <!-- PANNEAU CONFIGURATION SUPABASE CLOUD -->
+          <div class="glass-card" style="margin-top: 24px; border-top: 3px solid #10b981;">
+            <div class="card-title-area" style="margin-bottom: 16px;">
+              <h2 style="display: flex; align-items: center; gap: 10px;">
+                <i data-lucide="database" style="color: #10b981;"></i> Connexion Base de Données Supabase (Cloud)
+              </h2>
+              <span class="badge badge-success" style="font-size: 11px;">PostgreSQL</span>
+            </div>
+            
+            <p style="color: var(--fox-muted); font-size: 13px; margin-bottom: 20px; line-height: 1.5;">
+              Connectez FOX GESCOM à votre projet <strong>Supabase</strong> pour sauvegarder vos données dans le Cloud, les partager en temps réel sur plusieurs ordinateurs et éviter de dépendre du cache local du navigateur.
+            </p>
+
+            <form id="form-supabase-config">
+              <div class="form-group">
+                <label for="supabase-project-url">Project URL (Supabase)</label>
+                <input type="url" class="form-control" id="supabase-project-url" placeholder="https://votre-projet.supabase.co" style="font-family: monospace; font-size: 13px;">
+                <small style="color: var(--fox-muted); font-size: 11px; display: block; margin-top: 4px;">
+                  Disponible dans votre tableau de bord Supabase : <em>Project Settings -> API -> Project URL</em>
+                </small>
+              </div>
+
+              <div class="form-group">
+                <label for="supabase-anon-key">Anon / Public API Key</label>
+                <input type="password" class="form-control" id="supabase-anon-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..." style="font-family: monospace; font-size: 13px;">
+                <small style="color: var(--fox-muted); font-size: 11px; display: block; margin-top: 4px;">
+                  Disponible dans : <em>Project Settings -> API -> Project API Keys -> anon / public</em>
+                </small>
+              </div>
+
+              <div class="form-group" style="margin-top: 15px;">
+                <label class="switch-container">
+                  <input type="checkbox" class="switch-checkbox" id="supabase-sync-enabled">
+                  <span>Activer la synchronisation automatique en temps réel</span>
+                </label>
+              </div>
+
+              <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 16px; flex-wrap: wrap;">
+                <button type="button" class="btn btn-secondary" id="btn-test-supabase">
+                  <i data-lucide="activity"></i> Tester la connexion
+                </button>
+                <button type="button" class="btn btn-secondary" id="btn-push-supabase" title="Envoyer vos données actuelles vers Supabase">
+                  <i data-lucide="upload-cloud"></i> Migrer données locales vers Cloud
+                </button>
+                <button type="button" class="btn btn-secondary" id="btn-pull-supabase" title="Télécharger les données depuis Supabase">
+                  <i data-lucide="download-cloud"></i> Synchroniser depuis le Cloud
+                </button>
+                <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-color: #10b981;">
+                  <i data-lucide="check-circle"></i> Enregistrer la configuration
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- View 7: Create Document (Order/Quote Builder) -->
+      <section id="new-order" class="tab-content">
+        <div class="order-creation-container">
+          
+          <!-- Product Selector + Cart building -->
+          <div class="order-creation-main">
+            <!-- Client & Document Type Selection Card -->
+            <div class="glass-card" style="padding: 20px; margin-bottom: 24px; display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label for="order-client-select">Sélectionner le Client</label>
+                <div style="display: flex; gap: 12px; align-items: center; margin-top: 8px;">
+                  <select class="select-input" id="order-client-select" style="flex-grow: 1; padding: 12px;">
+                    <!-- Dynamically populated -->
+                  </select>
+                  <button class="btn btn-secondary" id="btn-add-client-fast" title="Créer un nouveau client rapidement">
+                    <i data-lucide="plus"></i>
+                  </button>
+                </div>
+              </div>
+              
+              <div class="form-group" style="margin-bottom: 0;">
+                <label for="order-type-select">Type de Document</label>
+                <select class="select-input" id="order-type-select" style="width: 100%; margin-top: 8px; padding: 12px; font-weight: 700; color: white; background-color: var(--fox-dark-accent); border-color: var(--fox-orange);">
+                  <option value="Facture">Facture Directe</option>
+                  <option value="Devis">Devis Pro</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Cart Card -->
+            <div class="glass-card" style="margin-bottom: 24px;">
+              <div class="card-title-area" style="margin-bottom: 16px;">
+                <h2><i data-lucide="shopping-cart"></i> Panier / Lignes de Documents</h2>
+                <button class="btn btn-secondary" id="btn-clear-cart" style="padding: 6px 12px; font-size: 12px;">
+                  <i data-lucide="trash-2"></i> Vider le panier
+                </button>
+              </div>
+              
+              <!-- NOUVEAU: Autocomplétion de Produits (Recherche Prédictive) -->
+              <div class="form-group" style="position: relative; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.04); padding-bottom: 16px;">
+                <label for="order-product-autocomplete" style="font-weight: 600;">Rechercher et ajouter un produit au panier (Saisie prédictive)</label>
+                <div style="position: relative; margin-top: 8px;">
+                  <input type="text" class="form-control" id="order-product-autocomplete" placeholder="Saisissez le nom ou le code du produit..." autocomplete="off" style="padding-right: 42px;">
+                  <i data-lucide="search" style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--fox-muted); width: 18px; height: 18px; pointer-events: none;"></i>
+                  <!-- Floating Suggestions Panel -->
+                  <div id="autocomplete-suggestions-box" class="autocomplete-suggestions" style="display: none;"></div>
+                </div>
+              </div>
+
+              <!-- Cart Items -->
+              <div class="cart-items-list" id="cart-items-container">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+
+            <!-- Products picker grid (Optional catalog below) -->
+            <div class="glass-card">
+              <div class="card-title-area" style="margin-bottom: 12px;">
+                <h2><i data-lucide="search-code"></i> Catalogue visuel des produits</h2>
+                <div style="display: flex; gap: 8px;">
+                  <input type="text" class="search-input" id="order-product-search" placeholder="Rechercher produit..." style="padding: 8px 12px; font-size: 13px;">
+                  <select class="select-input" id="order-product-category" style="padding: 8px 12px; font-size: 13px;">
+                    <option value="all">Toutes</option>
+                  </select>
+                </div>
+              </div>
+              <div class="product-picker-grid" id="product-picker-container">
+                <!-- Products to select -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Order Summary Sidebar -->
+          <div class="order-summary-sidebar">
+            <div class="summary-heading" id="summary-document-type-title">Facturation Vente</div>
+            
+            <div class="form-group">
+              <label for="order-status-select" id="lbl-order-status-select">Statut du Document</label>
+              <select class="select-input" id="order-status-select" style="width: 100%; margin-top: 6px;">
+                <!-- Dynamically updated -->
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="order-discount-input">Remise Exceptionnelle (FCFA)</label>
+              <input type="number" class="form-control" id="order-discount-input" placeholder="0" min="0" style="margin-top: 6px;">
+            </div>
+
+            <!-- Appliquer la TVA à la volée -->
+            <div class="form-group" id="order-vat-toggle-group">
+              <label class="switch-container">
+                <input type="checkbox" class="switch-checkbox" id="order-vat-applied-checkbox" checked>
+                <span>Appliquer la TVA</span>
+              </label>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
+              <div class="summary-row">
+                <span>Sous-Total HT :</span>
+                <span id="order-summary-subtotal">0 FCFA</span>
+              </div>
+              <div class="summary-row">
+                <span>Remise :</span>
+                <span id="order-summary-discount">-0 FCFA</span>
+              </div>
+              <div class="summary-row">
+                <span>Montant Net HT :</span>
+                <span id="order-summary-net-ht">0 FCFA</span>
+              </div>
+              <div class="summary-row" id="order-summary-tva-row">
+                <span>TVA (18%) :</span>
+                <span id="order-summary-tva">0 FCFA</span>
+              </div>
+              <div class="summary-row total-row">
+                <span>Total TTC :</span>
+                <span class="total-value" id="order-summary-total">0 FCFA</span>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" id="btn-validate-order" style="width: 100%; padding: 14px; margin-top: 10px;">
+              <i data-lucide="check-circle"></i> Valider et Enregistrer
+            </button>
+          </div>
+
+        </div>
+      </section>
+      
+    </main>
+  </div>
+
+  <!-- Modal: Product (Add / Edit) -->
+  <div class="modal" id="modal-product">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="modal-product-title">Nouveau Produit</h3>
+        <button class="btn-close" id="modal-product-close"><i data-lucide="x"></i></button>
+      </div>
+      <form id="form-product">
+        <input type="hidden" id="product-id-field">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="product-name">Désignation du produit</label>
+            <input type="text" class="form-control" id="product-name" required placeholder="ex: Disque Dur Externe WD Elements">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="product-category">Catégorie</label>
+              <input type="text" class="form-control" id="product-category" required placeholder="ex: Informatique" list="categories-list">
+              <datalist id="categories-list">
+                <option value="Informatique">
+                <option value="Réseaux">
+                <option value="Mobilier">
+                <option value="Fournitures">
+              </datalist>
+            </div>
+            <div class="form-group">
+              <label for="product-price">Prix de vente (FCFA)</label>
+              <input type="number" class="form-control" id="product-price" required min="0" placeholder="ex: 45000">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="product-stock">Stock Initial</label>
+              <input type="number" class="form-control" id="product-stock" required min="0" placeholder="ex: 10">
+            </div>
+            <div class="form-group">
+              <label for="product-min-stock">Stock Alerte (Seuil Min)</label>
+              <input type="number" class="form-control" id="product-min-stock" required min="0" placeholder="ex: 3">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-product">Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Client (Add / Edit) -->
+  <div class="modal" id="modal-client">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="modal-client-title">Nouveau Client</h3>
+        <button class="btn-close" id="modal-client-close"><i data-lucide="x"></i></button>
+      </div>
+      <form id="form-client">
+        <input type="hidden" id="client-id-field">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="client-name">Nom de l'entreprise ou du client</label>
+            <input type="text" class="form-control" id="client-name" required placeholder="ex: Société Dakaroise de Commerce">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="client-email">Adresse Email</label>
+              <input type="email" class="form-control" id="client-email" required placeholder="ex: contact@entreprise.sn">
+            </div>
+            <div class="form-group">
+              <label for="client-phone">Téléphone</label>
+              <input type="text" class="form-control" id="client-phone" required placeholder="ex: +221 77 123 45 67">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="client-city">Ville</label>
+              <input type="text" class="form-control" id="client-city" required placeholder="ex: Dakar" list="cities-list">
+              <datalist id="cities-list">
+                <option value="Dakar">
+                <option value="Thiès">
+                <option value="Mbour">
+                <option value="Saint-Louis">
+                <option value="Touba">
+                <option value="Ziguinchor">
+              </datalist>
+            </div>
+            <div class="form-group">
+              <label for="client-address">Adresse complète</label>
+              <input type="text" class="form-control" id="client-address" required placeholder="ex: Rue 12 x Corniche Ouest">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-client">Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Fournisseur (Add / Edit) -->
+  <div class="modal" id="modal-supplier">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="modal-supplier-title">Nouveau Fournisseur</h3>
+        <button class="btn-close" id="modal-supplier-close"><i data-lucide="x"></i></button>
+      </div>
+      <form id="form-supplier">
+        <input type="hidden" id="supplier-id-field">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="supplier-name">Nom de l'entreprise Fournisseur</label>
+            <input type="text" class="form-control" id="supplier-name" required placeholder="ex: Africa Tech Distribution">
+          </div>
+          <div class="form-group">
+            <label for="supplier-specialty">Spécialité (Produits fournis)</label>
+            <input type="text" class="form-control" id="supplier-specialty" required placeholder="ex: Matériel Informatique, Mobilier de bureau">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="supplier-email">Adresse Email</label>
+              <input type="email" class="form-control" id="supplier-email" required placeholder="ex: commercial@fournisseur.sn">
+            </div>
+            <div class="form-group">
+              <label for="supplier-phone">Téléphone</label>
+              <input type="text" class="form-control" id="supplier-phone" required placeholder="ex: +221 33 865 00 00">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="supplier-city">Ville</label>
+              <input type="text" class="form-control" id="supplier-city" required placeholder="ex: Dakar">
+            </div>
+            <div class="form-group">
+              <label for="supplier-address">Adresse Complète</label>
+              <input type="text" class="form-control" id="supplier-address" required placeholder="ex: Zone Industrielle, Km 4 Centenaire">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-supplier">Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Commande Fournisseur (PO) Creation -->
+  <div class="modal" id="modal-po">
+    <div class="modal-dialog" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3>Nouvelle Commande Fournisseur</h3>
+        <button class="btn-close" id="modal-po-close"><i data-lucide="x"></i></button>
+      </div>
+      <form id="form-po">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="po-supplier-select">Sélectionner le Fournisseur</label>
+            <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
+              <select class="select-input" id="po-supplier-select" required style="flex-grow: 1; padding: 10px;">
+                <!-- Dynamically populated -->
+              </select>
+              <button type="button" class="btn btn-secondary" id="btn-add-supplier-fast" title="Créer un nouveau fournisseur" style="padding: 10px 14px;">
+                <i data-lucide="plus"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px; margin-top: 15px;">
+            <h4 style="font-size: 13px; font-weight: 700; color: white; margin-bottom: 12px; text-transform: uppercase;">Sélectionner les articles à approvisionner</h4>
+            
+            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 10px; align-items: flex-end; margin-bottom: 15px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label for="po-product-select">Produit</label>
+                <select class="select-input" id="po-product-select" style="width: 100%; padding: 10px;">
+                  <!-- Dynamically populated -->
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label for="po-qty-input">Quantité</label>
+                <input type="number" class="form-control" id="po-qty-input" min="1" placeholder="1" style="padding: 9px;">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label for="po-cost-input">Prix d'Achat HT</label>
+                <input type="number" class="form-control" id="po-cost-input" min="0" placeholder="Prix d'achat" style="padding: 9px;">
+              </div>
+              <button type="button" class="btn btn-secondary btn-icon" id="btn-add-po-item" style="padding: 10px 14px;">
+                <i data-lucide="plus"></i>
+              </button>
+            </div>
+
+            <!-- Temporary items table in modal -->
+            <div class="table-responsive" style="max-height: 180px; overflow-y: auto; border: 1px solid var(--card-border); border-radius: var(--radius-sm);">
+              <table class="fox-table" style="font-size: 12px;">
+                <thead>
+                  <tr style="background: rgba(255,255,255,0.02);">
+                    <th style="padding: 8px;">Désignation</th>
+                    <th style="padding: 8px; text-align: center;">Quantité</th>
+                    <th style="padding: 8px; text-align: right;">P.U Achat</th>
+                    <th style="padding: 8px; text-align: right;">Total HT</th>
+                    <th style="padding: 8px; text-align: center; width: 40px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="po-items-table-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+
+            <div style="text-align: right; margin-top: 15px; font-weight: 700; font-family: var(--font-title); font-size: 15px;">
+              Total Achat Estimé : <span id="po-modal-total" style="color: var(--fox-orange);">0 FCFA</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-po">Annuler</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-po">Enregistrer la commande</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Bon de Livraison (BL) Creation -->
+  <div class="modal" id="modal-delivery">
+    <div class="modal-dialog" style="max-width: 720px;">
+      <div class="modal-header">
+        <h3 style="display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="truck" style="color: var(--fox-orange);"></i> Nouveau Bon de Livraison (BL)
+        </h3>
+        <button class="btn-close" id="modal-delivery-close"><i data-lucide="x"></i></button>
+      </div>
+      <form id="form-delivery">
+        <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+          <div class="form-row">
+            <div class="form-group" style="flex: 1;">
+              <label for="delivery-invoice-select">Facture de Vente associée</label>
+              <select class="select-input" id="delivery-invoice-select" style="width: 100%; padding: 10px; margin-top: 6px;">
+                <!-- Populated dynamically with orders + "-- Sans facture (Livraison directe) --" -->
+              </select>
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label for="delivery-client-select">Client Destinataire *</label>
+              <select class="select-input" id="delivery-client-select" required style="width: 100%; padding: 10px; margin-top: 6px;">
+                <!-- Populated dynamically with clients -->
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group" style="flex: 1;">
+              <label for="delivery-date-input">Date de Livraison *</label>
+              <input type="date" class="form-control" id="delivery-date-input" required style="margin-top: 6px; padding: 9px;">
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label for="delivery-status-select">Statut Initial</label>
+              <select class="select-input" id="delivery-status-select" style="width: 100%; padding: 10px; margin-top: 6px;">
+                <option value="En préparation" selected>En préparation</option>
+                <option value="En cours">En transit (En cours)</option>
+                <option value="Livré">Livré</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group" style="flex: 1;">
+              <label for="delivery-city-input">Ville de Livraison</label>
+              <input type="text" class="form-control" id="delivery-city-input" placeholder="ex: Dakar" style="margin-top: 6px;">
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label for="delivery-address-input">Adresse de Livraison</label>
+              <input type="text" class="form-control" id="delivery-address-input" placeholder="ex: Point E, Rue 3" style="margin-top: 6px;">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group" style="flex: 1;">
+              <label for="delivery-carrier-input">Transporteur / Chauffeur</label>
+              <input type="text" class="form-control" id="delivery-carrier-input" placeholder="ex: Flotte interne, Dakar Express" style="margin-top: 6px;">
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label for="delivery-carrier-phone-input">Contact Chauffeur / Destinataire</label>
+              <input type="text" class="form-control" id="delivery-carrier-phone-input" placeholder="ex: +221 77 000 00 00" style="margin-top: 6px;">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 15px;">
+            <label for="delivery-notes-input">Instructions / Notes de livraison</label>
+            <input type="text" class="form-control" id="delivery-notes-input" placeholder="ex: Colis fragile, contacter avant livraison..." style="margin-top: 6px;">
+          </div>
+
+          <!-- Section Articles à Livrer -->
+          <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 15px; margin-top: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <h4 style="font-size: 13px; font-weight: 700; color: white; text-transform: uppercase;">Articles à livrer</h4>
+              <span id="delivery-items-counter" style="font-size: 12px; color: var(--fox-orange); font-weight: 600;">0 article(s)</span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 2fr 1fr auto; gap: 10px; align-items: flex-end; margin-bottom: 12px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label for="delivery-product-select">Ajouter un produit</label>
+                <select class="select-input" id="delivery-product-select" style="width: 100%; padding: 10px;">
+                  <!-- Dynamically populated -->
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label for="delivery-qty-input">Quantité</label>
+                <input type="number" class="form-control" id="delivery-qty-input" min="1" placeholder="1" style="padding: 9px;">
+              </div>
+              <button type="button" class="btn btn-secondary btn-icon" id="btn-add-delivery-item" style="padding: 10px 14px;" title="Ajouter article">
+                <i data-lucide="plus"></i>
+              </button>
+            </div>
+
+            <!-- Table of delivery items -->
+            <div class="table-responsive" style="max-height: 180px; overflow-y: auto; border: 1px solid var(--card-border); border-radius: var(--radius-sm);">
+              <table class="fox-table" style="font-size: 12px;">
+                <thead>
+                  <tr style="background: rgba(255,255,255,0.02);">
+                    <th style="padding: 8px;">Désignation</th>
+                    <th style="padding: 8px; text-align: center; width: 100px;">Quantité Livrée</th>
+                    <th style="padding: 8px; text-align: center; width: 50px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="delivery-items-table-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-delivery">Annuler</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-delivery">
+            <i data-lucide="check"></i> Enregistrer le Bon de Livraison
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Client Details (Mini-CRM) -->
+  <div class="modal" id="modal-client-details">
+    <div class="modal-dialog" style="max-width: 750px;">
+      <div class="modal-header">
+        <h3 style="display: flex; align-items: center; gap: 8px;"><i data-lucide="contact" style="color: var(--fox-orange);"></i> Fiche Client & Historique</h3>
+        <button class="btn-close" id="modal-client-details-close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body" style="background-color: #f4f4f6; display: flex; flex-direction: column; gap: 20px; max-height: 75vh; overflow-y: auto;">
+        <!-- Client Info Card -->
+        <div class="glass-card" style="background-color: white; color: #1a1a1f; padding: 20px; border-radius: var(--radius-md); border: 1px solid #e2e2e8; box-shadow: var(--shadow-sm);">
+          <h4 style="font-family: var(--font-title); font-size: 16px; font-weight: 700; color: var(--fox-orange); margin-bottom: 12px;" id="crm-client-name">Nom Client</h4>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 13px;">
+            <div>
+              <p style="margin-bottom: 6px; color: #62626e;"><strong>Email :</strong> <span id="crm-client-email" style="color: #1a1a1f; font-weight:600;">email</span></p>
+              <p style="margin-bottom: 6px; color: #62626e;"><strong>Téléphone :</strong> <span id="crm-client-phone" style="color: #1a1a1f; font-weight:600;">phone</span></p>
+            </div>
+            <div>
+              <p style="margin-bottom: 6px; color: #62626e;"><strong>Ville :</strong> <span id="crm-client-city" style="color: #1a1a1f; font-weight:600;">city</span></p>
+              <p style="margin-bottom: 6px; color: #62626e;"><strong>Adresse :</strong> <span id="crm-client-address" style="color: #1a1a1f; font-weight:600;">address</span></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Invoices History -->
+        <div class="glass-card" style="background-color: white; color: #1a1a1f; padding: 20px; border-radius: var(--radius-md); border: 1px solid #e2e2e8; box-shadow: var(--shadow-sm);">
+          <h4 style="font-family: var(--font-title); font-size: 14px; font-weight: 700; color: #1a1a1f; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="file-check" style="color: var(--fox-orange); width: 18px; height: 18px;"></i> Historique des Factures
+          </h4>
+          <div class="table-responsive" style="max-height: 180px; overflow-y: auto;">
+            <table class="fox-table" style="font-size: 12px; width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="background-color: #f8f8fa;">
+                  <th style="padding: 10px; border-bottom: 1px solid #e2e2e8; color: #62626e; text-align: left;">N° Facture</th>
+                  <th style="padding: 10px; border-bottom: 1px solid #e2e2e8; color: #62626e; text-align: left;">Date</th>
+                  <th style="padding: 10px; border-bottom: 1px solid #e2e2e8; color: #62626e; text-align: right;">Montant TTC</th>
+                  <th style="padding: 10px; border-bottom: 1px solid #e2e2e8; color: #62626e; text-align: left;">Statut</th>
+                  <th style="padding: 10px; border-bottom: 1px solid #e2e2e8; color: #62626e; text-align: center; width: 60px;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="crm-client-invoices-body">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Quotes History -->
+        <div class="glass-card" style="background-color: white; color: #1a1a1f; padding: 20px; border-radius: var(--radius-md); border: 1px solid #e2e2e8; box-shadow: var(--shadow-sm);">
+          <h4 style="font-family: var(--font-title); font-size: 14px; font-weight: 700; color: #1a1a1f; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="file-text" style="color: var(--fox-orange); width: 18px; height: 18px;"></i> Historique des Devis
+          </h4>
+          <div class="table-responsive" style="max-height: 180px; overflow-y: auto;">
+            <table class="fox-table" style="font-size: 12px; width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="background-color: #f8f8fa;">
+                  <th style="padding: 10px; border-bottom: 1px solid #e2e2e8; color: #62626e; text-align: left;">N° Devis</th>
+                  <th style="padding: 10px; border-bottom: 1px solid #e2e2e8; color: #62626e; text-align: left;">Date</th>
+                  <th style="padding: 10px; border-bottom: 1px solid #e2e2e8; color: #62626e; text-align: right;">Montant TTC</th>
+                  <th style="padding: 10px; border-bottom: 1px solid #e2e2e8; color: #62626e; text-align: left;">Statut</th>
+                  <th style="padding: 10px; border-bottom: 1px solid #e2e2e8; color: #62626e; text-align: center; width: 60px;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="crm-client-quotes-body">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Enregistrer un Règlement -->
+  <div class="modal" id="modal-add-payment">
+    <div class="modal-dialog" style="max-width: 450px;">
+      <div class="modal-header">
+        <h3 style="display: flex; align-items: center; gap: 8px;"><i data-lucide="dollar-sign" style="color: var(--fox-orange);"></i> Enregistrer un Règlement</h3>
+        <button class="btn-close" id="modal-add-payment-close"><i data-lucide="x"></i></button>
+      </div>
+      <form id="form-payment">
+        <input type="hidden" id="payment-invoice-id">
+        <div class="modal-body">
+          <div style="background-color: rgba(255, 107, 0, 0.05); border: 1px dashed var(--fox-orange); padding: 12px; border-radius: var(--radius-sm); margin-bottom: 20px; font-size: 13px; color: white;">
+            Facture : <span id="payment-invoice-label" style="font-weight:700;">...</span><br>
+            Reste à payer : <span id="payment-invoice-balance" style="font-weight:700; color: var(--fox-orange);">0 FCFA</span>
+          </div>
+          
+          <div class="form-group">
+            <label for="payment-amount">Montant du versement (FCFA)</label>
+            <input type="number" class="form-control" id="payment-amount" required min="1" placeholder="Entrez le montant...">
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="payment-method">Mode de règlement</label>
+              <select class="select-input" id="payment-method" required style="width: 100%; padding: 10px; margin-top: 6px;">
+                <option value="Wave" selected>Wave</option>
+                <option value="Orange Money">Orange Money</option>
+                <option value="Espèces">Espèces</option>
+                <option value="Virement Bancaire">Virement Bancaire</option>
+                <option value="Chèque">Chèque</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="payment-date">Date de paiement</label>
+              <input type="date" class="form-control" id="payment-date" required style="margin-top: 6px; padding: 9px;">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-payment">Annuler</button>
+          <button type="submit" class="btn btn-primary">Valider l'encaissement</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Document Details View -->
+  <div class="modal" id="modal-invoice">
+    <div class="modal-dialog" style="max-width: 800px;">
+      <div class="modal-header">
+        <h3 id="modal-invoice-viewer-title">Détails du Document</h3>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <!-- Special Actions container -->
+          <div id="invoice-special-actions-container" style="display: inline-flex; gap: 6px;"></div>
+          
+          <!-- NOUVEAU: Bouton Télécharger PDF -->
+          <button class="btn btn-primary" id="btn-download-pdf" style="padding: 6px 12px; font-size: 13px;">
+            <i data-lucide="download"></i> Télécharger PDF
+          </button>
+          
+          <button class="btn btn-secondary" id="btn-print-invoice" style="padding: 6px 12px; font-size: 13px;">
+            <i data-lucide="printer"></i> Imprimer
+          </button>
+          
+          <button class="btn-close" id="modal-invoice-close"><i data-lucide="x"></i></button>
+        </div>
+      </div>
+      <div class="modal-body" style="background-color: #f4f4f6; padding: 20px;">
+        <!-- printable document card -->
+        <div class="invoice-card" id="invoice-details-card">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden Container for Printing Documents Directly -->
+  <div id="print-container">
+    <div class="invoice-card" id="print-section">
+      <!-- Populated via JS just before printing -->
+    </div>
+  </div>
+
+  <!-- System Toasts Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Load App Scripts -->
+  <script src="mockData.js?v=1.2.0"></script>
+  <script src="app.js?v=1.3.0"></script>
+</body>
+</html>
