@@ -5,6 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FOX GESCOM - Gestion Commerciale Sénégal</title>
   <link rel="stylesheet" href="index.css?v=1.1.0">
+
+  <!-- Configuration PWA (Progressive Web App) -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="theme-color" content="#ff6b00">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FOX GESCOM">
+
   <!-- Chart.js for beautiful analytics -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- Lucide Icons for premium modern iconography -->
@@ -110,6 +121,12 @@
             <i data-lucide="cloud"></i>
             <span id="cloud-sync-text">Mode Local</span>
           </div>
+
+          <!-- Bouton Installer l'application PWA -->
+          <button class="btn btn-secondary" id="btn-install-pwa" style="display: none; align-items: center; gap: 6px; padding: 8px 14px; font-size: 13px;" title="Installer FOX GESCOM sur cet appareil">
+            <i data-lucide="download"></i>
+            <span>Installer l'App</span>
+          </button>
 
           <button class="btn btn-primary" id="header-new-sale-btn">
             <i data-lucide="plus"></i>

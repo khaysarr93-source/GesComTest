@@ -28,6 +28,40 @@ let uploadedLogoBase64 = "";
 // Instance active du graphique Chart.js
 let salesChartInstance = null;
 
+// ==============================================================================
+// PROGRESSIVE WEB APP (PWA) - SERVICE WORKER & INSTALLATION
+// ==============================================================================
+let deferredInstallPrompt = null;
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => {
+        console.log('FOX GESCOM Service Worker actif:', reg.scope);
+      })
+      .catch(err => {
+        console.warn('Erreur Service Worker:', err);
+      });
+  });
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const installBtn = document.getElementById('btn-install-pwa');
+  if (installBtn) {
+    installBtn.style.display = 'inline-flex';
+    if (window.lucide) lucide.createIcons();
+  }
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  const installBtn = document.getElementById('btn-install-pwa');
+  if (installBtn) installBtn.style.display = 'none';
+  showToast("Application FOX GESCOM installée avec succès sur votre appareil !", "success");
+});
+
 // Initialisation au chargement
 document.addEventListener('DOMContentLoaded', () => {
   // Mettre à jour l'horloge en premier pour éviter tout blocage ou retard
@@ -3336,6 +3370,24 @@ function setupEventHandlers() {
 
   const deliveryClientSelect = document.getElementById('delivery-client-select');
   if (deliveryClientSelect) deliveryClientSelect.addEventListener('change', handleDeliveryClientChange);
+
+  // Installation PWA
+  const installBtn = document.getElementById('btn-install-pwa');
+  if (installBtn) {
+    installBtn.addEventListener('click', async () => {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        const { outcome } = await deferredInstallPrompt.userChoice;
+        if (outcome === 'accepted') {
+          showToast("Installation en cours...", "info");
+        }
+        deferredInstallPrompt = null;
+        installBtn.style.display = 'none';
+      } else {
+        showToast("Pour installer l'application, cliquez sur l'icône dans la barre d'adresse de votre navigateur ou utilisez 'Installer' / 'Ajouter à l'écran d'accueil'.", "info");
+      }
+    });
+  }
 
   // Panier ventes
   document.getElementById('order-product-search').addEventListener('input', renderOrderProductPicker);
