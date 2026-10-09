@@ -6,6 +6,11 @@ let state = {
   clients: [],
   orders: [],
   quotes: [],
+  salesOrders: [],
+  refunds: [],
+  warehouses: [],
+  stockMoves: [],
+  cashJournal: [],
   suppliers: [],
   purchaseOrders: [],
   receptions: [],
@@ -116,6 +121,21 @@ function initLocalStorage() {
   if (!localStorage.getItem('fox_delivery_notes')) {
     localStorage.setItem('fox_delivery_notes', JSON.stringify(DEFAULT_DELIVERY_NOTES));
   }
+  if (!localStorage.getItem('fox_sales_orders')) {
+    localStorage.setItem('fox_sales_orders', JSON.stringify(typeof DEFAULT_SALES_ORDERS !== 'undefined' ? DEFAULT_SALES_ORDERS : []));
+  }
+  if (!localStorage.getItem('fox_refunds')) {
+    localStorage.setItem('fox_refunds', JSON.stringify(typeof DEFAULT_REFUNDS !== 'undefined' ? DEFAULT_REFUNDS : []));
+  }
+  if (!localStorage.getItem('fox_warehouses')) {
+    localStorage.setItem('fox_warehouses', JSON.stringify(typeof DEFAULT_WAREHOUSES !== 'undefined' ? DEFAULT_WAREHOUSES : []));
+  }
+  if (!localStorage.getItem('fox_stock_moves')) {
+    localStorage.setItem('fox_stock_moves', JSON.stringify(typeof DEFAULT_STOCK_MOVES !== 'undefined' ? DEFAULT_STOCK_MOVES : []));
+  }
+  if (!localStorage.getItem('fox_cash_journal')) {
+    localStorage.setItem('fox_cash_journal', JSON.stringify(typeof DEFAULT_CASH_JOURNAL !== 'undefined' ? DEFAULT_CASH_JOURNAL : []));
+  }
 
   // Charger dans l'état en mémoire
   state.products = JSON.parse(localStorage.getItem('fox_products'));
@@ -127,6 +147,11 @@ function initLocalStorage() {
   state.purchaseOrders = JSON.parse(localStorage.getItem('fox_purchase_orders'));
   state.receptions = JSON.parse(localStorage.getItem('fox_receptions'));
   state.deliveryNotes = JSON.parse(localStorage.getItem('fox_delivery_notes'));
+  state.salesOrders = JSON.parse(localStorage.getItem('fox_sales_orders')) || [];
+  state.refunds = JSON.parse(localStorage.getItem('fox_refunds')) || [];
+  state.warehouses = JSON.parse(localStorage.getItem('fox_warehouses')) || [];
+  state.stockMoves = JSON.parse(localStorage.getItem('fox_stock_moves')) || [];
+  state.cashJournal = JSON.parse(localStorage.getItem('fox_cash_journal')) || [];
 
   // Rétrocompatibilité pour les nouvelles clés si écrasé par ancienne version
   if (state.companyInfo.isVatSubject === undefined) state.companyInfo.isVatSubject = true;
@@ -134,9 +159,12 @@ function initLocalStorage() {
   if (state.companyInfo.currency === undefined) state.companyInfo.currency = "FCFA";
   if (state.companyInfo.prefixInvoice === undefined) state.companyInfo.prefixInvoice = "F";
   if (state.companyInfo.prefixQuote === undefined) state.companyInfo.prefixQuote = "D";
+  if (state.companyInfo.prefixSalesOrder === undefined) state.companyInfo.prefixSalesOrder = "CC";
+  if (state.companyInfo.prefixRefund === undefined) state.companyInfo.prefixRefund = "AV";
   if (state.companyInfo.prefixDelivery === undefined) state.companyInfo.prefixDelivery = "BL";
   if (state.companyInfo.prefixPO === undefined) state.companyInfo.prefixPO = "CF";
   if (state.companyInfo.prefixReception === undefined) state.companyInfo.prefixReception = "BR";
+  if (state.companyInfo.invoicingPolicy === undefined) state.companyInfo.invoicingPolicy = "delivery";
 
   // Rétrocompatibilité pour les règlements/paiements sur factures
   if (state.orders) {
@@ -195,6 +223,23 @@ function saveState(key) {
   if (key === 'deliveryNotes' || key === 'all') {
     localStorage.setItem('fox_delivery_notes', JSON.stringify(state.deliveryNotes));
     if (typeof pushEntityToSupabase === 'function') pushEntityToSupabase('deliveryNotes', state.deliveryNotes);
+  }
+  if (key === 'salesOrders' || key === 'all') {
+    localStorage.setItem('fox_sales_orders', JSON.stringify(state.salesOrders));
+    if (typeof pushEntityToSupabase === 'function') pushEntityToSupabase('salesOrders', state.salesOrders);
+  }
+  if (key === 'refunds' || key === 'all') {
+    localStorage.setItem('fox_refunds', JSON.stringify(state.refunds));
+    if (typeof pushEntityToSupabase === 'function') pushEntityToSupabase('refunds', state.refunds);
+  }
+  if (key === 'warehouses' || key === 'all') {
+    localStorage.setItem('fox_warehouses', JSON.stringify(state.warehouses));
+  }
+  if (key === 'stockMoves' || key === 'all') {
+    localStorage.setItem('fox_stock_moves', JSON.stringify(state.stockMoves));
+  }
+  if (key === 'cashJournal' || key === 'all') {
+    localStorage.setItem('fox_cash_journal', JSON.stringify(state.cashJournal));
   }
 }
 
@@ -311,12 +356,16 @@ function triggerTabRender(tabId) {
 
 function triggerSubTabRender(subtabId) {
   switch(subtabId) {
+    case 'sales-orders': renderSalesOrders(); break;
     case 'invoices': renderOrders(); break;
     case 'quotes-list': renderQuotes(); break;
+    case 'refunds': renderRefunds(); break;
+    case 'cash-journal': renderCashJournal(); break;
     case 'suppliers': renderSuppliers(); break;
     case 'purchase-orders': renderPurchaseOrders(); break;
     case 'receptions': renderReceptions(); break;
     case 'deliveries': renderDeliveries(); break;
+    case 'warehouses': renderWarehouses(); renderStockMoves(); break;
   }
   lucide.createIcons();
 }
@@ -687,15 +736,19 @@ function renderProducts() {
   });
 
   if (filtered.length === 0) {
-    tableBody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--fox-muted); padding: 30px;">Aucun produit trouvé.</td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--fox-muted); padding: 30px;">Aucun produit trouvé.</td></tr>`;
     return;
   }
 
   filtered.forEach(p => {
+    const cost = p.costPrice !== undefined ? p.costPrice : Math.round(p.price * 0.7);
+    const reserved = p.stockReserved || 0;
+    const available = Math.max(0, (p.stock || 0) - reserved);
+
     let statusClass = 'badge-success';
     let statusText = 'En stock';
-    if (p.stock === 0) { statusClass = 'badge-danger'; statusText = 'Rupture'; }
-    else if (p.stock <= p.minStock) { statusClass = 'badge-warning'; statusText = 'Stock bas'; }
+    if (available === 0) { statusClass = 'badge-danger'; statusText = 'Rupture dispo'; }
+    else if (available <= p.minStock) { statusClass = 'badge-warning'; statusText = 'Stock bas'; }
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -703,8 +756,10 @@ function renderProducts() {
       <td style="font-weight: 600;">${p.name}</td>
       <td><span class="badge badge-info">${p.category}</span></td>
       <td style="font-family: var(--font-title); font-weight: 700;">${formatFCFA(p.price)}</td>
-      <td style="font-weight: 600;">${p.stock}</td>
-      <td style="color: var(--fox-muted);">${p.minStock}</td>
+      <td style="font-size: 12px; color: var(--fox-muted);">${formatFCFA(cost)}</td>
+      <td style="font-weight: 700; color: white;">${p.stock || 0}</td>
+      <td style="font-weight: 600; color: #f59e0b;">${reserved > 0 ? `${reserved} rés.` : '0'}</td>
+      <td style="font-weight: 700; color: ${available > 0 ? '#10b981' : '#ef4444'};">${available}</td>
       <td><span class="badge ${statusClass}">${statusText}</span></td>
       <td>
         <div class="table-actions">
@@ -834,7 +889,7 @@ function renderQuotes() {
       <td>
         <div class="table-actions">
           <button class="btn-table-action" onclick="viewDocument('quote', '${q.id}')" title="Visualiser"><i data-lucide="eye"></i></button>
-          <button class="btn-table-action" onclick="convertQuoteToInvoice('${q.id}')" title="Convertir en Facture" ${q.status === 'Accepté' ? 'disabled' : ''}><i data-lucide="shuffle"></i></button>
+          <button class="btn-table-action" onclick="convertQuoteToSalesOrder('${q.id}')" title="Convertir en Commande Client (CC)" ${q.status === 'Accepté' ? 'disabled' : ''}><i data-lucide="shopping-bag"></i></button>
           <button class="btn-table-action delete-action" onclick="deleteQuote('${q.id}')" title="Supprimer"><i data-lucide="trash-2"></i></button>
         </div>
       </td>
@@ -897,6 +952,7 @@ function renderOrders() {
       <td>
         <div class="table-actions">
           <button class="btn-table-action" onclick="viewDocument('invoice', '${o.id}')" title="Afficher la Facture"><i data-lucide="eye"></i></button>
+          <button class="btn-table-action" onclick="openCreateRefundModal('${o.id}')" title="Créer un Avoir / Retour"><i data-lucide="corner-down-left"></i></button>
           <button class="btn-table-action" onclick="openAddDeliveryModal('${o.id}')" title="Créer Bon de Livraison (BL)" ${o.status === 'Annulée' ? 'disabled' : ''}><i data-lucide="truck"></i></button>
           <button class="btn-table-action delete-action" onclick="cancelOrder('${o.id}')" title="Annuler" ${o.status === 'Annulée' ? 'disabled' : ''}><i data-lucide="x-circle"></i></button>
         </div>
@@ -940,15 +996,38 @@ function renderNewOrder() {
   const summaryTitle = document.getElementById('summary-document-type-title');
   const statusSelect = document.getElementById('order-status-select');
   
+  // Peupler la sélection de dépôt d'expédition
+  const whSelect = document.getElementById('order-warehouse-select');
+  if (whSelect) {
+    whSelect.innerHTML = '';
+    (state.warehouses || []).forEach(wh => {
+      const opt = document.createElement('option');
+      opt.value = wh.id;
+      opt.textContent = `${wh.name} (${wh.code || ''})`;
+      if (wh.isDefault) opt.selected = true;
+      whSelect.appendChild(opt);
+    });
+  }
+
   typeSelect.addEventListener('change', () => {
+    const whGroup = document.getElementById('order-warehouse-group');
     if (typeSelect.value === 'Devis') {
       summaryTitle.textContent = 'Détails du Devis';
+      if (whGroup) whGroup.style.display = 'none';
       statusSelect.innerHTML = `
         <option value="Brouillon">Brouillon</option>
         <option value="Envoyé" selected>Envoyé au client</option>
       `;
+    } else if (typeSelect.value === 'Commande') {
+      summaryTitle.textContent = 'Détails de la Commande Client';
+      if (whGroup) whGroup.style.display = 'block';
+      statusSelect.innerHTML = `
+        <option value="Confirmée" selected>Confirmée</option>
+        <option value="Brouillon">Brouillon</option>
+      `;
     } else {
-      summaryTitle.textContent = 'Détails de la Facture';
+      summaryTitle.textContent = 'Détails de la Facture Directe';
+      if (whGroup) whGroup.style.display = 'none';
       statusSelect.innerHTML = `
         <option value="Payée" selected>Payée</option>
         <option value="En attente">En attente de paiement</option>
@@ -1204,6 +1283,64 @@ function validateAndProcessOrder() {
     
     viewDocument('quote', quoteId);
 
+  } else if (type === 'Commande') {
+    // Cas COMMANDE CLIENT (CC) : Réservation de stock sans déduction physique
+    const prefixSO = state.companyInfo.prefixSalesOrder || 'CC';
+    const yearSO = state.salesOrders.filter(s => s.id.startsWith(`${prefixSO}-${currentYear}`));
+    const nextNum = yearSO.length > 0 ? Math.max(...yearSO.map(s => parseInt(s.id.split('-')[2]) || 0)) + 1 : 1;
+    const soId = `${prefixSO}-${currentYear}-${String(nextNum).padStart(4, '0')}`;
+    const warehouseId = document.getElementById('order-warehouse-select') ? document.getElementById('order-warehouse-select').value : 'wh-1';
+
+    // Réserver les stocks
+    cart.forEach(item => {
+      const prod = state.products.find(p => p.id === item.productId);
+      if (prod) {
+        prod.stockReserved = (prod.stockReserved || 0) + item.quantity;
+      }
+    });
+
+    const newSO = {
+      id: soId,
+      quoteId: null,
+      clientId: clientId,
+      warehouseId: warehouseId,
+      date: new Date().toISOString(),
+      invoicingPolicy: state.companyInfo.invoicingPolicy || 'delivery',
+      deliveryStatus: 'no',
+      invoiceStatus: 'no',
+      status: status || 'Confirmée',
+      items: cart.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        deliveredQty: 0,
+        invoicedQty: 0,
+        price: state.products.find(p => p.id === item.productId).price
+      })),
+      discount: discount,
+      tvaRate: finalVatRate
+    };
+
+    state.salesOrders.push(newSO);
+    saveState('products');
+    saveState('salesOrders');
+
+    cart = [];
+    document.getElementById('order-discount-input').value = '';
+    document.getElementById('order-client-select').value = '';
+
+    showToast(`Commande Client ${soId} confirmée ! Stock réservé.`, 'success');
+
+    // Rediriger vers l'onglet billing -> sous-onglet sales-orders
+    const billingTab = document.querySelector('.nav-item[data-tab="billing"]');
+    if (billingTab) {
+      billingTab.click();
+      const subSOBtn = document.querySelector('.sub-tab-btn[data-subtab="sales-orders"]');
+      if (subSOBtn) subSOBtn.click();
+    }
+
+    renderSalesOrders();
+    openSalesOrderModal(soId);
+
   } else {
     let stockOk = true;
     cart.forEach(item => {
@@ -1216,6 +1353,17 @@ function validateAndProcessOrder() {
     cart.forEach(item => {
       const prod = state.products.find(p => p.id === item.productId);
       prod.stock -= item.quantity;
+      // Traçabilité mouvement de stock direct
+      state.stockMoves.push({
+        id: `SM-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+        date: new Date().toISOString(),
+        productId: item.productId,
+        warehouseId: 'wh-1',
+        qty: -item.quantity,
+        unitCost: prod.costPrice || (prod.price * 0.7),
+        moveType: 'delivery',
+        refDoc: 'Vente Directe'
+      });
     });
 
     const prefixInv = state.companyInfo.prefixInvoice || 'F';
@@ -1252,9 +1400,11 @@ function validateAndProcessOrder() {
       status: 'En préparation'
     });
 
+    // Mouvement de stock loggé
     saveState('products');
     saveState('orders');
     saveState('deliveryNotes');
+    saveState('stockMoves');
 
     cart = [];
     document.getElementById('order-discount-input').value = '';
@@ -1285,88 +1435,78 @@ function validateAndProcessOrder() {
 
 
 // ==========================================
-// CONVERSION DEVIS ➔ FACTURE (Génère Facture + BL)
+// CONVERSION DEVIS ➔ COMMANDE CLIENT (CC) (Flux ERP Odoo)
 // ==========================================
-function convertQuoteToInvoice(quoteId) {
+function convertQuoteToSalesOrder(quoteId) {
   const quote = state.quotes.find(q => q.id === quoteId);
   if (!quote) return;
 
   if (quote.status === 'Accepté') {
-    showToast('Ce devis est déjà converti en facture.', 'info');
+    showToast('Ce devis est déjà converti.', 'info');
     return;
   }
 
-  let stockError = false;
-  let itemsMissing = [];
+  quote.status = 'Accepté';
+
+  // Réserver le stock pour chaque article
   quote.items.forEach(item => {
     const prod = state.products.find(p => p.id === item.productId);
-    if (!prod || prod.stock < item.quantity) {
-      stockError = true;
-      itemsMissing.push(prod ? prod.name : 'Produit inconnu');
+    if (prod) {
+      prod.stockReserved = (prod.stockReserved || 0) + item.quantity;
     }
   });
 
-  if (stockError) {
-    alert(`Stock insuffisant pour la conversion du devis : \n- ${itemsMissing.join('\n- ')}`);
-    showToast('Stock insuffisant.', 'danger');
-    return;
-  }
-
-  // Déduire les stocks
-  quote.items.forEach(item => {
-    const prod = state.products.find(p => p.id === item.productId);
-    prod.stock -= item.quantity;
-  });
-  quote.status = 'Accepté';
-
   const currentYear = new Date().getFullYear();
-  
-  const prefixInv = state.companyInfo.prefixInvoice || 'F';
-  const yearOrders = state.orders.filter(o => o.id.startsWith(`${prefixInv}-${currentYear}`));
-  const nextNum = yearOrders.length > 0 ? Math.max(...yearOrders.map(o => parseInt(o.id.split('-')[2]) || 0)) + 1 : 1;
-  const invoiceId = `${prefixInv}-${currentYear}-${String(nextNum).padStart(4, '0')}`;
+  const prefixSO = state.companyInfo.prefixSalesOrder || 'CC';
+  const yearSO = state.salesOrders.filter(s => s.id.startsWith(`${prefixSO}-${currentYear}`));
+  const nextNum = yearSO.length > 0 ? Math.max(...yearSO.map(s => parseInt(s.id.split('-')[2]) || 0)) + 1 : 1;
+  const soId = `${prefixSO}-${currentYear}-${String(nextNum).padStart(4, '0')}`;
 
-  const newOrder = {
-    id: invoiceId,
+  const newSO = {
+    id: soId,
+    quoteId: quote.id,
     clientId: quote.clientId,
+    warehouseId: 'wh-1',
     date: new Date().toISOString(),
-    items: quote.items.map(item => ({ ...item })),
-    discount: quote.discount,
-    tvaRate: quote.tvaRate,
-    status: 'Payée'
+    invoicingPolicy: state.companyInfo.invoicingPolicy || 'delivery',
+    deliveryStatus: 'no',
+    invoiceStatus: 'no',
+    status: 'Confirmée',
+    items: quote.items.map(item => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      deliveredQty: 0,
+      invoicedQty: 0,
+      price: item.price
+    })),
+    discount: quote.discount || 0,
+    tvaRate: quote.tvaRate !== undefined ? quote.tvaRate : 18
   };
 
-  state.orders.push(newOrder);
-
-  const prefixDel = state.companyInfo.prefixDelivery || 'BL';
-  const yearDeliveries = state.deliveryNotes.filter(d => d.id.startsWith(`${prefixDel}-${currentYear}`));
-  const blNum = yearDeliveries.length > 0 ? Math.max(...yearDeliveries.map(d => parseInt(d.id.split('-')[2]) || 0)) + 1 : 1;
-  const blId = `${prefixDel}-${currentYear}-${String(blNum).padStart(4, '0')}`;
-
-  state.deliveryNotes.push({
-    id: blId,
-    orderId: invoiceId,
-    clientId: quote.clientId,
-    date: new Date().toISOString(),
-    status: 'En préparation'
-  });
+  state.salesOrders.push(newSO);
 
   saveState('products');
   saveState('quotes');
-  saveState('orders');
-  saveState('deliveryNotes');
+  saveState('salesOrders');
 
-  showToast(`Devis converti. Facture ${invoiceId} et Bon de Livraison ${blId} générés !`, 'success');
+  showToast(`Devis ${quote.id} converti avec succès en Commande Client ${soId} ! Stocks réservés.`, 'success');
   document.getElementById('modal-invoice').classList.remove('active');
-  
-  // Rediriger vers factures
+
+  // Rediriger vers l'onglet billing -> sous-onglet sales-orders
   const billingTab = document.querySelector('.nav-item[data-tab="billing"]');
   if (billingTab) {
     billingTab.click();
-    const subInvoiceBtn = document.querySelector('.sub-tab-btn[data-subtab="invoices"]');
-    if (subInvoiceBtn) subInvoiceBtn.click();
+    const subSOBtn = document.querySelector('.sub-tab-btn[data-subtab="sales-orders"]');
+    if (subSOBtn) subSOBtn.click();
   }
-  viewDocument('invoice', invoiceId);
+
+  renderQuotes();
+  renderSalesOrders();
+  openSalesOrderModal(soId);
+}
+
+function convertQuoteToInvoice(quoteId) {
+  convertQuoteToSalesOrder(quoteId);
 }
 
 function cancelOrder(orderId) {
@@ -1482,7 +1622,21 @@ function savePayment(e) {
     o.status = 'Partiellement Payée';
   }
 
+  // Ajouter au Journal de Caisse & Règlements
+  const cjEntry = {
+    id: `CJ-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+    date: date ? new Date(date).toISOString() : new Date().toISOString(),
+    type: 'in',
+    label: `Encaissement Facture ${invoiceId}`,
+    method: method,
+    refDoc: invoiceId,
+    partnerId: o.clientId,
+    amount: inputAmount
+  };
+  state.cashJournal.push(cjEntry);
+
   saveState('orders');
+  saveState('cashJournal');
   showToast(`Règlement de ${formatFCFA(inputAmount)} enregistré pour la facture ${invoiceId}.`, "success");
 
   // Fermer le modal de règlement
@@ -1494,9 +1648,702 @@ function savePayment(e) {
   // Mettre à jour le dashboard et la liste
   renderOrders();
   renderDashboard();
+  renderCashJournal();
 }
 
 // ==========================================
+// 1. COMMANDES CLIENTS (CC) - LOGIQUE MÉTIER
+// ==========================================
+function renderSalesOrders() {
+  const tableBody = document.getElementById('so-table-body');
+  if (!tableBody) return;
+
+  const searchVal = document.getElementById('so-search') ? document.getElementById('so-search').value.toLowerCase() : '';
+  const statusFilter = document.getElementById('so-filter-status') ? document.getElementById('so-filter-status').value : 'all';
+
+  tableBody.innerHTML = '';
+  const soList = state.salesOrders || [];
+  const filtered = soList.filter(so => {
+    const client = state.clients.find(c => c.id === so.clientId) || { name: 'Client Inconnu' };
+    const soId = so.id || '';
+    const qId = so.quoteId || '';
+    return soId.toLowerCase().includes(searchVal) || qId.toLowerCase().includes(searchVal) || client.name.toLowerCase().includes(searchVal);
+  }).filter(so => {
+    return statusFilter === 'all' || so.status === statusFilter;
+  }).sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+  if (filtered.length === 0) {
+    tableBody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--fox-muted); padding: 30px;">Aucune commande client trouvée.</td></tr>`;
+    return;
+  }
+
+  filtered.forEach(so => {
+    const client = state.clients.find(c => c.id === so.clientId) || { name: 'Client Inconnu' };
+    const wh = state.warehouses.find(w => w.id === so.warehouseId) || { name: 'Entrepôt Central' };
+    const items = so.items || [];
+    const subtotal = items.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 0)), 0);
+    const tvaRate = so.tvaRate !== undefined ? so.tvaRate : 18;
+    const discount = so.discount || 0;
+    const totalTtc = (subtotal - discount) * (1 + tvaRate / 100);
+    const itemsCount = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+
+    let delivBadge = `<span class="badge badge-danger">Non Livré</span>`;
+    if (so.deliveryStatus === 'full') delivBadge = `<span class="badge badge-success">Livré 100%</span>`;
+    else if (so.deliveryStatus === 'partial') delivBadge = `<span class="badge badge-warning">Livraison Partielle</span>`;
+
+    let invBadge = `<span class="badge badge-danger">Non Facturé</span>`;
+    if (so.invoiceStatus === 'full') invBadge = `<span class="badge badge-success">Facturé 100%</span>`;
+    else if (so.invoiceStatus === 'partial') invBadge = `<span class="badge badge-warning">Facturé Partiel</span>`;
+
+    let statusBadge = `<span class="badge badge-info">${so.status}</span>`;
+    if (so.status === 'Terminée') statusBadge = `<span class="badge badge-success">Terminée</span>`;
+    else if (so.status === 'Annulée') statusBadge = `<span class="badge badge-danger">Annulée</span>`;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-family: monospace; font-weight: 700; color: var(--fox-orange);">${so.id}</td>
+      <td>${so.date ? formatDate(so.date) : ''}</td>
+      <td style="font-weight: 600;">${client.name}</td>
+      <td style="font-size: 12px; color: var(--fox-muted);">${wh.name}</td>
+      <td>${itemsCount} art.</td>
+      <td style="font-family: var(--font-title); font-weight: 700; color: white;">${formatFCFA(totalTtc)}</td>
+      <td>${delivBadge}</td>
+      <td>${invBadge}</td>
+      <td>${statusBadge}</td>
+      <td>
+        <div class="table-actions">
+          <button class="btn-table-action" onclick="openSalesOrderModal('${so.id}')" title="Gérer la Commande"><i data-lucide="eye"></i></button>
+          <button class="btn-table-action" onclick="openAddDeliveryModal('${so.id}')" title="Créer Bon de Livraison" ${so.deliveryStatus === 'full' || so.status === 'Annulée' ? 'disabled' : ''}><i data-lucide="truck"></i></button>
+          <button class="btn-table-action" onclick="createInvoiceFromSalesOrder('${so.id}')" title="Créer Facture" ${so.invoiceStatus === 'full' || so.status === 'Annulée' ? 'disabled' : ''}><i data-lucide="receipt"></i></button>
+          <button class="btn-table-action delete-action" onclick="cancelSalesOrder('${so.id}')" title="Annuler Commande" ${so.status === 'Annulée' ? 'disabled' : ''}><i data-lucide="x-circle"></i></button>
+        </div>
+      </td>
+    `;
+    tableBody.appendChild(tr);
+  });
+}
+
+function openSalesOrderModal(soId) {
+  const so = state.salesOrders.find(s => s.id === soId);
+  if (!so) return;
+
+  const card = document.getElementById('sales-order-details-card');
+  if (card) {
+    card.innerHTML = generateDocumentHtml('sales_order', soId);
+  }
+
+  const modalTitle = document.getElementById('modal-so-title');
+  if (modalTitle) modalTitle.textContent = `Commande Client ${so.id}`;
+
+  const btnDeliv = document.getElementById('btn-so-quick-delivery');
+  if (btnDeliv) {
+    btnDeliv.disabled = (so.deliveryStatus === 'full' || so.status === 'Annulée');
+    btnDeliv.onclick = () => {
+      document.getElementById('modal-sales-order').classList.remove('active');
+      openAddDeliveryModal(so.id);
+    };
+  }
+
+  const btnInv = document.getElementById('btn-so-quick-invoice');
+  if (btnInv) {
+    btnInv.disabled = (so.invoiceStatus === 'full' || so.status === 'Annulée');
+    btnInv.onclick = () => {
+      document.getElementById('modal-sales-order').classList.remove('active');
+      createInvoiceFromSalesOrder(so.id);
+    };
+  }
+
+  const btnPrint = document.getElementById('btn-print-so');
+  if (btnPrint) {
+    btnPrint.onclick = () => {
+      viewDocument('sales_order', so.id);
+      printActiveDocument();
+    };
+  }
+
+  document.getElementById('modal-sales-order').classList.add('active');
+  if (window.lucide) lucide.createIcons();
+}
+
+function createInvoiceFromSalesOrder(soId) {
+  const so = state.salesOrders.find(s => s.id === soId);
+  if (!so) return;
+
+  if (so.invoiceStatus === 'full') {
+    showToast("Cette commande est déjà entièrement facturée.", "info");
+    return;
+  }
+
+  const policy = so.invoicingPolicy || state.companyInfo.invoicingPolicy || 'delivery';
+  let itemsToInvoice = [];
+
+  if (policy === 'delivery') {
+    // Mode À la livraison : Seules les quantités livrées et non encore facturées peuvent être facturées
+    so.items.forEach(item => {
+      const delivered = item.deliveredQty || 0;
+      const invoiced = item.invoicedQty || 0;
+      const deliverableToInvoice = delivered - invoiced;
+      if (deliverableToInvoice > 0) {
+        itemsToInvoice.push({
+          productId: item.productId,
+          quantity: deliverableToInvoice,
+          price: item.price
+        });
+      }
+    });
+
+    if (itemsToInvoice.length === 0) {
+      alert("Politique 'Facturation à la livraison' active :\nAucun article livré n'est en attente de facturation. Veuillez d'abord émettre un Bon de Livraison (BL) expédié.");
+      return;
+    }
+  } else {
+    // Mode À la commande : Tout ce qui a été commandé et non facturé
+    so.items.forEach(item => {
+      const remainingToInvoice = (item.quantity || 0) - (item.invoicedQty || 0);
+      if (remainingToInvoice > 0) {
+        itemsToInvoice.push({
+          productId: item.productId,
+          quantity: remainingToInvoice,
+          price: item.price
+        });
+      }
+    });
+
+    if (itemsToInvoice.length === 0) {
+      showToast("Tous les articles de cette commande ont déjà été facturés.", "info");
+      return;
+    }
+  }
+
+  // Créer la Facture de Vente
+  const currentYear = new Date().getFullYear();
+  const prefixInv = state.companyInfo.prefixInvoice || 'F';
+  const yearOrders = state.orders.filter(o => o.id.startsWith(`${prefixInv}-${currentYear}`));
+  const nextNum = yearOrders.length > 0 ? Math.max(...yearOrders.map(o => parseInt(o.id.split('-')[2]) || 0)) + 1 : 1;
+  const invoiceId = `${prefixInv}-${currentYear}-${String(nextNum).padStart(4, '0')}`;
+
+  const newInvoice = {
+    id: invoiceId,
+    orderId: so.id,
+    deliveryId: '',
+    clientId: so.clientId,
+    date: new Date().toISOString(),
+    items: itemsToInvoice,
+    discount: so.discount || 0,
+    tvaRate: so.tvaRate !== undefined ? so.tvaRate : 18,
+    status: 'En attente',
+    paidAmount: 0,
+    payments: []
+  };
+
+  state.orders.push(newInvoice);
+
+  // Mettre à jour les quantités facturées dans la commande client
+  itemsToInvoice.forEach(invItem => {
+    const soItem = so.items.find(i => i.productId === invItem.productId);
+    if (soItem) {
+      soItem.invoicedQty = (soItem.invoicedQty || 0) + invItem.quantity;
+    }
+  });
+
+  const allInvoiced = so.items.every(i => (i.invoicedQty || 0) >= i.quantity);
+  const anyInvoiced = so.items.some(i => (i.invoicedQty || 0) > 0);
+  so.invoiceStatus = allInvoiced ? 'full' : (anyInvoiced ? 'partial' : 'no');
+
+  if (allInvoiced && so.deliveryStatus === 'full') {
+    so.status = 'Terminée';
+  } else {
+    so.status = 'En cours';
+  }
+
+  saveState('salesOrders');
+  saveState('orders');
+
+  showToast(`Facture ${invoiceId} générée depuis la commande ${so.id} !`, 'success');
+
+  renderSalesOrders();
+  renderOrders();
+  viewDocument('invoice', invoiceId);
+}
+
+function cancelSalesOrder(soId) {
+  const so = state.salesOrders.find(s => s.id === soId);
+  if (!so) return;
+
+  if (!confirm(`Annuler la commande client ${soId} ? Les stocks réservés seront libérés.`)) return;
+
+  // Libérer les réservations restantes
+  so.items.forEach(item => {
+    const prod = state.products.find(p => p.id === item.productId);
+    if (prod) {
+      const remainingReserved = (item.quantity || 0) - (item.deliveredQty || 0);
+      if (remainingReserved > 0) {
+        prod.stockReserved = Math.max(0, (prod.stockReserved || 0) - remainingReserved);
+      }
+    }
+  });
+
+  so.status = 'Annulée';
+
+  saveState('products');
+  saveState('salesOrders');
+
+  showToast(`Commande ${soId} annulée. Réservations de stock libérées.`, 'warning');
+  renderSalesOrders();
+  renderProducts();
+}
+
+
+// ==========================================
+// 2. AVOIRS & RETOURS CLIENTS (REFUNDS)
+// ==========================================
+function renderRefunds() {
+  const tableBody = document.getElementById('refunds-table-body');
+  if (!tableBody) return;
+
+  const searchVal = document.getElementById('refund-search') ? document.getElementById('refund-search').value.toLowerCase() : '';
+  tableBody.innerHTML = '';
+
+  const refundList = state.refunds || [];
+  const filtered = refundList.filter(rf => {
+    const client = state.clients.find(c => c.id === rf.clientId) || { name: 'Client Inconnu' };
+    const rfId = rf.id || '';
+    const invId = rf.invoiceId || '';
+    return rfId.toLowerCase().includes(searchVal) || invId.toLowerCase().includes(searchVal) || client.name.toLowerCase().includes(searchVal);
+  }).sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+  if (filtered.length === 0) {
+    tableBody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--fox-muted); padding: 30px;">Aucun avoir enregistré.</td></tr>`;
+    return;
+  }
+
+  filtered.forEach(rf => {
+    const client = state.clients.find(c => c.id === rf.clientId) || { name: 'Client Inconnu' };
+    const items = rf.items || [];
+    const subtotal = items.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 0)), 0);
+    const tvaRate = rf.tvaRate !== undefined ? rf.tvaRate : 18;
+    const totalTtc = subtotal * (1 + tvaRate / 100);
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-family: monospace; font-weight: 700; color: #ef4444;">${rf.id}</td>
+      <td>${rf.date ? formatDate(rf.date) : ''}</td>
+      <td style="font-family: monospace; font-weight: 600; color: var(--fox-orange);">${rf.invoiceId}</td>
+      <td style="font-weight: 600;">${client.name}</td>
+      <td style="font-size: 12px; color: var(--fox-muted);">${rf.reason || 'N/A'}</td>
+      <td>
+        <span class="badge ${rf.restock ? 'badge-success' : 'badge-info'}">
+          ${rf.restock ? 'Oui (Réintégré)' : 'Non (Financier)'}
+        </span>
+      </td>
+      <td style="font-family: var(--font-title); font-weight: 700; color: #ef4444;">-${formatFCFA(totalTtc)}</td>
+      <td><span class="badge badge-success">${rf.status || 'Validé'}</span></td>
+      <td>
+        <div class="table-actions">
+          <button class="btn-table-action" onclick="viewDocument('refund', '${rf.id}')" title="Visualiser l'Avoir"><i data-lucide="eye"></i></button>
+        </div>
+      </td>
+    `;
+    tableBody.appendChild(tr);
+  });
+}
+
+function openCreateRefundModal(invoiceId = null) {
+  const invSelect = document.getElementById('refund-invoice-select');
+  invSelect.innerHTML = '<option value="" disabled selected>-- Sélectionnez une facture émise --</option>';
+
+  state.orders.filter(o => o.status !== 'Annulée').forEach(o => {
+    const c = state.clients.find(cli => cli.id === o.clientId) || { name: 'Client Inconnu' };
+    const opt = document.createElement('option');
+    opt.value = o.id;
+    opt.textContent = `${o.id} - ${c.name} (${formatDate(o.date)})`;
+    if (invoiceId && o.id === invoiceId) opt.selected = true;
+    invSelect.appendChild(opt);
+  });
+
+  // Dépôt de réintégration
+  const whSelect = document.getElementById('refund-warehouse-select');
+  if (whSelect) {
+    whSelect.innerHTML = '';
+    state.warehouses.forEach(wh => {
+      const opt = document.createElement('option');
+      opt.value = wh.id;
+      opt.textContent = `${wh.name} (${wh.code || ''})`;
+      whSelect.appendChild(opt);
+    });
+  }
+
+  // Calculer le montant par défaut si facture sélectionnée
+  const currentInvId = invoiceId || invSelect.value;
+  if (currentInvId) {
+    const inv = state.orders.find(o => o.id === currentInvId);
+    if (inv) {
+      const items = inv.items || [];
+      const subtotal = items.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 0)), 0);
+      const discount = inv.discount || 0;
+      const tvaRate = inv.tvaRate !== undefined ? inv.tvaRate : 18;
+      const totalTtc = (subtotal - discount) * (1 + tvaRate / 100);
+      document.getElementById('refund-amount').value = Math.round(totalTtc);
+    }
+  }
+
+  invSelect.onchange = () => {
+    const inv = state.orders.find(o => o.id === invSelect.value);
+    if (inv) {
+      const items = inv.items || [];
+      const subtotal = items.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 0)), 0);
+      const discount = inv.discount || 0;
+      const tvaRate = inv.tvaRate !== undefined ? inv.tvaRate : 18;
+      const totalTtc = (subtotal - discount) * (1 + tvaRate / 100);
+      document.getElementById('refund-amount').value = Math.round(totalTtc);
+    }
+  };
+
+  document.getElementById('refund-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('refund-reason').value = '';
+  document.getElementById('refund-restock-checkbox').checked = true;
+
+  document.getElementById('modal-refund').classList.add('active');
+  if (window.lucide) lucide.createIcons();
+}
+
+function saveRefund(e) {
+  e.preventDefault();
+  const invoiceId = document.getElementById('refund-invoice-select').value;
+  const date = document.getElementById('refund-date').value;
+  const reason = document.getElementById('refund-reason').value.trim();
+  const amountTtc = parseFloat(document.getElementById('refund-amount').value) || 0;
+  const restock = document.getElementById('refund-restock-checkbox').checked;
+  const warehouseId = document.getElementById('refund-warehouse-select') ? document.getElementById('refund-warehouse-select').value : 'wh-1';
+
+  const origInvoice = state.orders.find(o => o.id === invoiceId);
+  if (!origInvoice) {
+    showToast("Facture d'origine introuvable.", "danger");
+    return;
+  }
+
+  if (amountTtc <= 0) {
+    showToast("Le montant de l'avoir doit être supérieur à 0.", "warning");
+    return;
+  }
+
+  const currentYear = new Date().getFullYear();
+  const prefixRefund = state.companyInfo.prefixRefund || 'AV';
+  const yearRefunds = state.refunds.filter(r => r.id.startsWith(`${prefixRefund}-${currentYear}`));
+  const nextNum = yearRefunds.length > 0 ? Math.max(...yearRefunds.map(r => parseInt(r.id.split('-')[2]) || 0)) + 1 : 1;
+  const refundId = `${prefixRefund}-${currentYear}-${String(nextNum).padStart(4, '0')}`;
+
+  // Réintégrer le stock si demandé
+  if (restock) {
+    (origInvoice.items || []).forEach(item => {
+      const prod = state.products.find(p => p.id === item.productId);
+      if (prod) {
+        prod.stock = (prod.stock || 0) + item.quantity;
+        // Journaliser le flux physique
+        state.stockMoves.push({
+          id: `SM-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+          date: new Date().toISOString(),
+          productId: prod.id,
+          warehouseId: warehouseId,
+          qty: item.quantity,
+          unitCost: prod.costPrice || (prod.price * 0.7),
+          moveType: 'refund_return',
+          refDoc: refundId
+        });
+      }
+    });
+    saveState('products');
+    saveState('stockMoves');
+  }
+
+  // Impact sur la caisse / trésorerie (Décaissement)
+  const cjOut = {
+    id: `CJ-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+    date: date ? new Date(date).toISOString() : new Date().toISOString(),
+    type: 'out',
+    label: `Avoir Client ${refundId} (Facture ${invoiceId})`,
+    method: 'Espèces',
+    refDoc: refundId,
+    partnerId: origInvoice.clientId,
+    amount: amountTtc
+  };
+  state.cashJournal.push(cjOut);
+  saveState('cashJournal');
+
+  const newRefund = {
+    id: refundId,
+    invoiceId: invoiceId,
+    clientId: origInvoice.clientId,
+    date: date ? new Date(date).toISOString() : new Date().toISOString(),
+    reason: reason,
+    restock: restock,
+    warehouseId: warehouseId,
+    items: origInvoice.items ? origInvoice.items.map(i => ({ ...i })) : [],
+    tvaRate: origInvoice.tvaRate !== undefined ? origInvoice.tvaRate : 18,
+    status: 'Validé'
+  };
+
+  state.refunds.push(newRefund);
+  saveState('refunds');
+
+  document.getElementById('modal-refund').classList.remove('active');
+  showToast(`Avoir ${refundId} émis ! ${restock ? 'Stock réintégré et' : ''} trésorerie ajustée.`, 'success');
+
+  renderRefunds();
+  renderOrders();
+  renderCashJournal();
+  viewDocument('refund', refundId);
+}
+
+
+// ==========================================
+// 3. DÉPÔTS & MOUVEMENTS DE STOCK
+// ==========================================
+function renderWarehouses() {
+  const container = document.getElementById('warehouses-cards-container');
+  if (!container) return;
+
+  container.innerHTML = '';
+  const whList = state.warehouses || [];
+
+  whList.forEach(wh => {
+    // Calcul de la valeur et des articles dans ce dépôt
+    const card = document.createElement('div');
+    card.style.background = 'rgba(255, 255, 255, 0.03)';
+    card.style.border = '1px solid var(--card-border)';
+    card.style.borderRadius = 'var(--radius-sm)';
+    card.style.padding = '16px';
+    card.style.display = 'flex';
+    card.style.flexDirection = 'column';
+    card.style.gap = '8px';
+
+    card.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+          <span style="font-size: 11px; font-weight: 700; color: var(--fox-orange); text-transform: uppercase;">${wh.code}</span>
+          <h4 style="font-size: 15px; font-weight: 700; color: white; margin-top: 2px;">${wh.name}</h4>
+        </div>
+        ${wh.isDefault ? `<span class="badge badge-success" style="font-size: 10px;">Principal</span>` : ''}
+      </div>
+      <p style="font-size: 12px; color: var(--fox-muted);">${wh.address || 'Aucune adresse'}</p>
+      <div style="margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px; display: flex; justify-content: space-between; font-size: 12px;">
+        <span style="color: var(--fox-muted);">Statut Dépôt :</span>
+        <span style="color: #10b981; font-weight: 600;">Opérationnel</span>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function renderStockMoves() {
+  const tableBody = document.getElementById('stock-moves-table-body');
+  if (!tableBody) return;
+
+  const searchVal = document.getElementById('stock-move-search') ? document.getElementById('stock-move-search').value.toLowerCase() : '';
+  const typeFilter = document.getElementById('stock-move-filter-type') ? document.getElementById('stock-move-filter-type').value : 'all';
+
+  tableBody.innerHTML = '';
+  const moves = state.stockMoves || [];
+
+  const filtered = moves.filter(sm => {
+    const prod = state.products.find(p => p.id === sm.productId) || { name: 'Article inconnu' };
+    const wh = state.warehouses.find(w => w.id === sm.warehouseId) || { name: 'Dépôt inconnu' };
+    const smId = sm.id || '';
+    const refDoc = sm.refDoc || '';
+    return smId.toLowerCase().includes(searchVal) || refDoc.toLowerCase().includes(searchVal) || prod.name.toLowerCase().includes(searchVal) || wh.name.toLowerCase().includes(searchVal);
+  }).filter(sm => {
+    return typeFilter === 'all' || sm.moveType === typeFilter;
+  }).sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+  if (filtered.length === 0) {
+    tableBody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--fox-muted); padding: 30px;">Aucun mouvement de stock enregistré.</td></tr>`;
+    return;
+  }
+
+  filtered.forEach(sm => {
+    const prod = state.products.find(p => p.id === sm.productId) || { name: 'Article inconnu' };
+    const wh = state.warehouses.find(w => w.id === sm.warehouseId) || { name: 'Dépôt Principal' };
+    const isPositive = sm.qty > 0;
+    const absQty = Math.abs(sm.qty);
+    const valTotal = absQty * (sm.unitCost || prod.costPrice || 0);
+
+    let fluxLabel = 'Sortie Livraison';
+    let fluxBadge = 'badge-danger';
+    if (sm.moveType === 'reception') { fluxLabel = 'Entrée Fournisseur'; fluxBadge = 'badge-success'; }
+    else if (sm.moveType === 'refund_return') { fluxLabel = 'Retour Client (Avoir)'; fluxBadge = 'badge-info'; }
+    else if (sm.moveType === 'transfer') { fluxLabel = isPositive ? 'Transfert Entrant' : 'Transfert Sortant'; fluxBadge = 'badge-warning'; }
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-family: monospace; font-size: 12px; color: var(--fox-muted);">${sm.id}</td>
+      <td>${sm.date ? formatDate(sm.date) : ''}</td>
+      <td style="font-weight: 600;">${prod.name}</td>
+      <td style="font-size: 12px; color: var(--fox-muted);">${wh.name}</td>
+      <td><span class="badge ${fluxBadge}">${fluxLabel}</span></td>
+      <td style="font-weight: 700; color: ${isPositive ? '#10b981' : '#ef4444'};">${isPositive ? `+${absQty}` : `-${absQty}`} u.</td>
+      <td style="font-size: 12px; color: white;">${formatFCFA(valTotal)}</td>
+      <td style="font-family: monospace; font-weight: 600; color: var(--fox-orange);">${sm.refDoc || '-'}</td>
+    `;
+    tableBody.appendChild(tr);
+  });
+}
+
+function openStockTransferModal() {
+  const srcSelect = document.getElementById('transfer-source-select');
+  const destSelect = document.getElementById('transfer-dest-select');
+  srcSelect.innerHTML = '';
+  destSelect.innerHTML = '';
+
+  state.warehouses.forEach((wh, idx) => {
+    const opt1 = document.createElement('option');
+    opt1.value = wh.id; opt1.textContent = `${wh.name} (${wh.code})`;
+    if (idx === 0) opt1.selected = true;
+    srcSelect.appendChild(opt1);
+
+    const opt2 = document.createElement('option');
+    opt2.value = wh.id; opt2.textContent = `${wh.name} (${wh.code})`;
+    if (idx === 1) opt2.selected = true;
+    destSelect.appendChild(opt2);
+  });
+
+  const prodSelect = document.getElementById('transfer-product-select');
+  prodSelect.innerHTML = '<option value="" disabled selected>-- Sélectionnez l\'article à déplacer --</option>';
+  state.products.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id; opt.textContent = `${p.name} (Stock Global: ${p.stock})`;
+    prodSelect.appendChild(opt);
+  });
+
+  document.getElementById('transfer-qty-input').value = '1';
+  document.getElementById('transfer-date-input').value = new Date().toISOString().split('T')[0];
+
+  document.getElementById('modal-stock-transfer').classList.add('active');
+  if (window.lucide) lucide.createIcons();
+}
+
+function saveStockTransfer(e) {
+  e.preventDefault();
+  const src = document.getElementById('transfer-source-select').value;
+  const dest = document.getElementById('transfer-dest-select').value;
+  const prodId = document.getElementById('transfer-product-select').value;
+  const qty = parseInt(document.getElementById('transfer-qty-input').value) || 0;
+  const date = document.getElementById('transfer-date-input').value;
+
+  if (src === dest) {
+    showToast("Le dépôt d'origine et le dépôt de destination doivent être différents.", "warning");
+    return;
+  }
+  if (!prodId || qty <= 0) {
+    showToast("Veuillez choisir un article et une quantité valide.", "warning");
+    return;
+  }
+
+  const prod = state.products.find(p => p.id === prodId);
+  if (!prod || prod.stock < qty) {
+    showToast(`Stock insuffisant pour ce transfert (${prod ? prod.stock : 0} en stock global).`, "danger");
+    return;
+  }
+
+  const transferDoc = `TR-${Date.now().toString().slice(-4)}`;
+
+  // Mouvement Sortant Dépôt Source
+  state.stockMoves.push({
+    id: `SM-${Date.now()}-1`,
+    date: date ? new Date(date).toISOString() : new Date().toISOString(),
+    productId: prodId,
+    warehouseId: src,
+    qty: -qty,
+    unitCost: prod.costPrice || (prod.price * 0.7),
+    moveType: 'transfer',
+    refDoc: transferDoc
+  });
+
+  // Mouvement Entrant Dépôt Cible
+  state.stockMoves.push({
+    id: `SM-${Date.now()}-2`,
+    date: date ? new Date(date).toISOString() : new Date().toISOString(),
+    productId: prodId,
+    warehouseId: dest,
+    qty: qty,
+    unitCost: prod.costPrice || (prod.price * 0.7),
+    moveType: 'transfer',
+    refDoc: transferDoc
+  });
+
+  saveState('stockMoves');
+
+  document.getElementById('modal-stock-transfer').classList.remove('active');
+  showToast(`Transfert de ${qty} unités validé (${transferDoc}).`, 'success');
+  renderStockMoves();
+}
+
+
+// ==========================================
+// 4. JOURNAL DE CAISSE & RÈGLEMENTS (TRÉSORERIE)
+// ==========================================
+function renderCashJournal() {
+  const tableBody = document.getElementById('cash-journal-table-body');
+  if (!tableBody) return;
+
+  const searchVal = document.getElementById('cash-search') ? document.getElementById('cash-search').value.toLowerCase() : '';
+  const methodFilter = document.getElementById('cash-filter-method') ? document.getElementById('cash-filter-method').value : 'all';
+
+  tableBody.innerHTML = '';
+  const entries = state.cashJournal || [];
+
+  let totalIn = 0;
+  let totalOut = 0;
+
+  entries.forEach(e => {
+    if (e.type === 'in') totalIn += (e.amount || 0);
+    else if (e.type === 'out') totalOut += (e.amount || 0);
+  });
+
+  const balance = totalIn - totalOut;
+
+  if (document.getElementById('cash-journal-total-in')) document.getElementById('cash-journal-total-in').textContent = formatFCFA(totalIn);
+  if (document.getElementById('cash-journal-total-out')) document.getElementById('cash-journal-total-out').textContent = formatFCFA(totalOut);
+  if (document.getElementById('cash-journal-balance')) document.getElementById('cash-journal-balance').textContent = formatFCFA(balance);
+
+  const filtered = entries.filter(e => {
+    const client = state.clients.find(c => c.id === e.partnerId) || { name: 'Client Inconnu' };
+    const eId = e.id || '';
+    const refDoc = e.refDoc || '';
+    const label = e.label || '';
+    return eId.toLowerCase().includes(searchVal) || refDoc.toLowerCase().includes(searchVal) || label.toLowerCase().includes(searchVal) || client.name.toLowerCase().includes(searchVal);
+  }).filter(e => {
+    return methodFilter === 'all' || e.method === methodFilter;
+  }).sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+  if (filtered.length === 0) {
+    tableBody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--fox-muted); padding: 30px;">Aucune écriture de trésorerie trouvée.</td></tr>`;
+    return;
+  }
+
+  filtered.forEach(e => {
+    const client = state.clients.find(c => c.id === e.partnerId) || { name: 'Tiers' };
+    const isIn = e.type === 'in';
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-family: monospace; font-size: 12px; color: var(--fox-muted);">${e.id}</td>
+      <td>${e.date ? formatDate(e.date) : ''}</td>
+      <td>
+        <span class="badge ${isIn ? 'badge-success' : 'badge-danger'}">
+          ${isIn ? 'Encaissement (+)' : 'Décaissement (-)'}
+        </span>
+      </td>
+      <td style="font-weight: 600;">${e.label}</td>
+      <td><span class="badge badge-info" style="font-size: 11px;">${e.method || 'Espèces'}</span></td>
+      <td style="font-family: monospace; font-weight: 600; color: var(--fox-orange);">${e.refDoc || '-'}</td>
+      <td style="font-weight: 600;">${client.name}</td>
+      <td style="font-family: var(--font-title); font-weight: 700; color: ${isIn ? '#10b981' : '#ef4444'};">
+        ${isIn ? `+${formatFCFA(e.amount)}` : `-${formatFCFA(e.amount)}`}
+      </td>
+    `;
+    tableBody.appendChild(tr);
+  });
+}
 
 
 // ==========================================
@@ -1833,19 +2680,44 @@ function receivePurchaseOrder(poId) {
 
   po.items.forEach(item => {
     const product = state.products.find(p => p.id === item.productId);
-    if (product) product.stock += item.quantity;
+    if (product) {
+      const oldStock = product.stock || 0;
+      const oldCost = product.costPrice || (product.price * 0.7);
+      const inQty = item.quantity || 0;
+      const inCost = item.costPrice || oldCost;
+
+      // Formule PMP Odoo / Gescom standard : (Ancien Stock * Ancien PMP + Qté Reçue * Prix Achat) / (Ancien Stock + Qté Reçue)
+      if (oldStock + inQty > 0) {
+        product.costPrice = Math.round(((oldStock * oldCost) + (inQty * inCost)) / (oldStock + inQty));
+      }
+      product.stock += inQty;
+
+      // Traçabilité mouvement de stock
+      state.stockMoves.push({
+        id: `SM-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+        date: new Date().toISOString(),
+        productId: product.id,
+        warehouseId: po.warehouseId || 'wh-1',
+        qty: inQty,
+        unitCost: inCost,
+        moveType: 'reception',
+        refDoc: receptionId
+      });
+    }
   });
 
   saveState('products');
   saveState('purchaseOrders');
   saveState('receptions');
+  saveState('stockMoves');
 
-  showToast(`Réception ${receptionId} validée. Stocks mis à jour.`, 'success');
+  showToast(`Réception ${receptionId} validée. Stocks et PMP recalculés avec succès !`, 'success');
   document.getElementById('modal-invoice').classList.remove('active');
   
   const activeSubtab = document.querySelector('#inventory .sub-tab-btn.active').getAttribute('data-subtab');
   if (activeSubtab === 'purchase-orders') renderPurchaseOrders();
   else if (activeSubtab === 'receptions') renderReceptions();
+  else if (activeSubtab === 'warehouses') { renderWarehouses(); renderStockMoves(); }
 }
 
 function renderReceptions() {
@@ -1939,17 +2811,34 @@ function renderDeliveries() {
   });
 }
 
-function openAddDeliveryModal(orderId = null) {
-  // Remplir la liste des factures
+function openAddDeliveryModal(salesOrderIdOrInvoiceId = null) {
+  // Remplir la liste des documents sources (Commandes Clients et Factures)
   const invoiceSelect = document.getElementById('delivery-invoice-select');
-  invoiceSelect.innerHTML = '<option value="">-- Sans facture (Livraison directe) --</option>';
+  invoiceSelect.innerHTML = '<option value="">-- Sans document (Livraison directe) --</option>';
+
+  // Priorité Commandes Clients CC
+  const soGroup = document.createElement('optgroup');
+  soGroup.label = 'Commandes Clients (CC)';
+  state.salesOrders.filter(so => so.status !== 'Annulée' && so.deliveryStatus !== 'full').forEach(so => {
+    const c = state.clients.find(cli => cli.id === so.clientId) || { name: 'Client Inconnu' };
+    const opt = document.createElement('option');
+    opt.value = so.id;
+    opt.textContent = `${so.id} - ${c.name} (${so.deliveryStatus === 'partial' ? 'Partielle' : 'À livrer'})`;
+    soGroup.appendChild(opt);
+  });
+  invoiceSelect.appendChild(soGroup);
+
+  // Factures
+  const invGroup = document.createElement('optgroup');
+  invGroup.label = 'Factures de Vente';
   state.orders.filter(o => o.status !== 'Annulée').forEach(o => {
     const c = state.clients.find(cli => cli.id === o.clientId) || { name: 'Client Inconnu' };
     const opt = document.createElement('option');
     opt.value = o.id;
     opt.textContent = `${o.id} - ${c.name} (${formatDate(o.date)})`;
-    invoiceSelect.appendChild(opt);
+    invGroup.appendChild(opt);
   });
+  invoiceSelect.appendChild(invGroup);
 
   // Remplir la liste des clients
   const clientSelect = document.getElementById('delivery-client-select');
@@ -1967,7 +2856,7 @@ function openAddDeliveryModal(orderId = null) {
   state.products.forEach(p => {
     const opt = document.createElement('option');
     opt.value = p.id;
-    opt.textContent = `${p.name} (Stock: ${p.stock})`;
+    opt.textContent = `${p.name} (Dispo: ${Math.max(0, p.stock - (p.stockReserved || 0))})`;
     prodSelect.appendChild(opt);
   });
 
@@ -1981,9 +2870,9 @@ function openAddDeliveryModal(orderId = null) {
 
   deliveryCart = [];
 
-  // Si pré-rempli avec une facture
-  if (orderId) {
-    invoiceSelect.value = orderId;
+  // Si pré-rempli avec une commande ou une facture
+  if (salesOrderIdOrInvoiceId) {
+    invoiceSelect.value = salesOrderIdOrInvoiceId;
     handleDeliveryInvoiceChange();
   } else {
     document.getElementById('delivery-city-input').value = '';
@@ -1996,13 +2885,43 @@ function openAddDeliveryModal(orderId = null) {
 }
 
 function handleDeliveryInvoiceChange() {
-  const invId = document.getElementById('delivery-invoice-select').value;
-  if (!invId) {
+  const docId = document.getElementById('delivery-invoice-select').value;
+  if (!docId) {
     renderDeliveryModalTable();
     return;
   }
 
-  const order = state.orders.find(o => o.id === invId);
+  // Vérifier d'abord si c'est une Commande Client CC
+  const salesOrder = state.salesOrders.find(so => so.id === docId);
+  if (salesOrder) {
+    const clientSelect = document.getElementById('delivery-client-select');
+    if (salesOrder.clientId) clientSelect.value = salesOrder.clientId;
+
+    const client = state.clients.find(c => c.id === salesOrder.clientId);
+    if (client) {
+      document.getElementById('delivery-city-input').value = client.city || '';
+      document.getElementById('delivery-address-input').value = client.address || '';
+      document.getElementById('delivery-carrier-phone-input').value = client.phone || '';
+    }
+
+    // Calculer les reliquats (reste à livrer = commandé - déjà livré)
+    deliveryCart = [];
+    (salesOrder.items || []).forEach(item => {
+      const delivered = item.deliveredQty || 0;
+      const remaining = (item.quantity || 0) - delivered;
+      if (remaining > 0) {
+        deliveryCart.push({
+          productId: item.productId,
+          quantity: remaining
+        });
+      }
+    });
+
+    renderDeliveryModalTable();
+    return;
+  }
+
+  const order = state.orders.find(o => o.id === docId);
   if (!order) return;
 
   const clientSelect = document.getElementById('delivery-client-select');
@@ -2137,10 +3056,64 @@ function saveDelivery(e) {
   const blNum = yearDeliveries.length > 0 ? Math.max(...yearDeliveries.map(d => parseInt(d.id.split('-')[2]) || 0)) + 1 : 1;
   const blId = `${prefixDel}-${currentYear}-${String(blNum).padStart(4, '0')}`;
 
+  const salesOrder = state.salesOrders.find(so => so.id === invoiceId);
+
+  // Mettre à jour les stocks physiques, réservations et mouvements
+  deliveryCart.forEach(item => {
+    const prod = state.products.find(p => p.id === item.productId);
+    if (prod) {
+      prod.stock = Math.max(0, (prod.stock || 0) - item.quantity);
+      if (salesOrder) {
+        // Libérer la réservation correspondante
+        prod.stockReserved = Math.max(0, (prod.stockReserved || 0) - item.quantity);
+      }
+      // Journaliser le mouvement de stock
+      state.stockMoves.push({
+        id: `SM-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+        date: new Date().toISOString(),
+        productId: prod.id,
+        warehouseId: (salesOrder ? salesOrder.warehouseId : 'wh-1'),
+        qty: -item.quantity,
+        unitCost: prod.costPrice || (prod.price * 0.7),
+        moveType: 'delivery',
+        refDoc: blId
+      });
+    }
+  });
+
+  // Mettre à jour la commande client si liée
+  if (salesOrder) {
+    let allDelivered = true;
+    let anyDelivered = false;
+
+    salesOrder.items.forEach(soItem => {
+      const deliveredNow = deliveryCart.find(di => di.productId === soItem.productId);
+      if (deliveredNow) {
+        soItem.deliveredQty = (soItem.deliveredQty || 0) + deliveredNow.quantity;
+      }
+      if ((soItem.deliveredQty || 0) < soItem.quantity) {
+        allDelivered = false;
+      }
+      if ((soItem.deliveredQty || 0) > 0) {
+        anyDelivered = true;
+      }
+    });
+
+    salesOrder.deliveryStatus = allDelivered ? 'full' : (anyDelivered ? 'partial' : 'no');
+    if (allDelivered && salesOrder.invoiceStatus === 'full') {
+      salesOrder.status = 'Terminée';
+    } else {
+      salesOrder.status = 'En cours';
+    }
+    saveState('salesOrders');
+  }
+
   const newBL = {
     id: blId,
+    salesOrderId: salesOrder ? salesOrder.id : '',
     orderId: invoiceId || 'LIVRAISON-DIRECTE',
     clientId: clientId,
+    warehouseId: salesOrder ? salesOrder.warehouseId : 'wh-1',
     date: dateInput ? new Date(dateInput).toISOString() : new Date().toISOString(),
     status: status,
     items: [...deliveryCart],
@@ -2152,10 +3125,12 @@ function saveDelivery(e) {
   };
 
   state.deliveryNotes.push(newBL);
+  saveState('products');
+  saveState('stockMoves');
   saveState('deliveryNotes');
 
   document.getElementById('modal-delivery').classList.remove('active');
-  showToast(`Bon de Livraison ${blId} généré avec succès.`, 'success');
+  showToast(`Bon de Livraison ${blId} généré ! Stock déduit et mouvement enregistré.`, 'success');
   renderDeliveries();
 
   // Ouvrir automatiquement la prévisualisation du document
@@ -2210,9 +3185,12 @@ function renderSettings() {
   document.getElementById('settings-company-currency').value = info.currency || "FCFA";
   document.getElementById('settings-prefix-invoice').value = info.prefixInvoice || "F";
   document.getElementById('settings-prefix-quote').value = info.prefixQuote || "D";
+  if (document.getElementById('settings-prefix-so')) document.getElementById('settings-prefix-so').value = info.prefixSalesOrder || "CC";
+  if (document.getElementById('settings-prefix-refund')) document.getElementById('settings-prefix-refund').value = info.prefixRefund || "AV";
   document.getElementById('settings-prefix-delivery').value = info.prefixDelivery || "BL";
   document.getElementById('settings-prefix-po').value = info.prefixPO || "CF";
   document.getElementById('settings-prefix-reception').value = info.prefixReception || "BR";
+  if (document.getElementById('settings-invoicing-policy')) document.getElementById('settings-invoicing-policy').value = info.invoicingPolicy || "delivery";
 
   // TVA Configurations
   const vatCheckbox = document.getElementById('settings-company-vat-subject');
@@ -2324,9 +3302,12 @@ function saveSettings(e) {
     currency: document.getElementById('settings-company-currency').value.trim(),
     prefixInvoice: document.getElementById('settings-prefix-invoice').value.trim(),
     prefixQuote: document.getElementById('settings-prefix-quote').value.trim(),
+    prefixSalesOrder: document.getElementById('settings-prefix-so') ? document.getElementById('settings-prefix-so').value.trim() : (state.companyInfo.prefixSalesOrder || "CC"),
+    prefixRefund: document.getElementById('settings-prefix-refund') ? document.getElementById('settings-prefix-refund').value.trim() : (state.companyInfo.prefixRefund || "AV"),
     prefixDelivery: document.getElementById('settings-prefix-delivery').value.trim(),
     prefixPO: document.getElementById('settings-prefix-po').value.trim(),
-    prefixReception: document.getElementById('settings-prefix-reception').value.trim()
+    prefixReception: document.getElementById('settings-prefix-reception').value.trim(),
+    invoicingPolicy: document.getElementById('settings-invoicing-policy') ? document.getElementById('settings-invoicing-policy').value : (state.companyInfo.invoicingPolicy || "delivery")
   };
 
   saveState('companyInfo');
@@ -2849,6 +3830,221 @@ function generateDocumentHtml(type, docId) {
         </div>
       </div>
     `;
+  } else if (type === 'sales_order') {
+    const so = state.salesOrders.find(s => s.id === docId);
+    if (!so) return '';
+    const client = state.clients.find(c => c.id === so.clientId) || { name: 'Client Inconnu', email: 'N/A', phone: 'N/A', city: 'N/A', address: 'N/A' };
+    const wh = state.warehouses.find(w => w.id === so.warehouseId) || { name: 'Entrepôt Central' };
+
+    let rowsHtml = '';
+    let subtotalHt = 0;
+    const items = so.items || [];
+    items.forEach((item, index) => {
+      const product = state.products.find(p => p.id === item.productId) || { name: 'Produit Inconnu' };
+      const itemPrice = item.price !== undefined ? item.price : (product.price || 0);
+      const itemQty = item.quantity || 0;
+      const deliveredQty = item.deliveredQty || 0;
+      const invoicedQty = item.invoicedQty || 0;
+      const rowTotal = itemPrice * itemQty;
+      subtotalHt += rowTotal;
+
+      rowsHtml += `
+        <tr>
+          <td style="text-align: center; width: 40px;">${index + 1}</td>
+          <td><strong>${product.name}</strong></td>
+          <td style="text-align: right;">${formatFCFA(itemPrice)}</td>
+          <td style="text-align: center; font-weight:700;">${itemQty}</td>
+          <td style="text-align: center; color: #10b981; font-weight:600;">${deliveredQty}</td>
+          <td style="text-align: center; color: #3b82f6; font-weight:600;">${invoicedQty}</td>
+          <td style="text-align: right; font-weight: 700;">${formatFCFA(rowTotal)}</td>
+        </tr>
+      `;
+    });
+
+    const discount = so.discount || 0;
+    const netHt = subtotalHt - discount;
+    const finalVatRate = so.tvaRate !== undefined ? so.tvaRate : 18;
+    const tva = netHt * (finalVatRate / 100);
+    const totalTtc = netHt + tva;
+
+    let logoHtml = `<span class="invoice-brand">${comp.name}</span>`;
+    if (comp.logo) logoHtml = `<img src="${comp.logo}" class="invoice-logo-img" alt="${comp.name}">`;
+
+    return `
+      <div class="invoice-header">
+        <div class="invoice-logo-title">
+          ${logoHtml}
+          <span style="font-size:11px; font-weight:600; color:#ff6b00; text-transform:uppercase;">BON DE COMMANDE CLIENT</span>
+          <div class="invoice-company-details" style="margin-top:10px;">
+            <p>${comp.address}</p>
+            <p>${comp.city}</p>
+            <p>Tél: ${comp.phone}</p>
+          </div>
+        </div>
+        <div class="invoice-title-meta">
+          <h2>COMMANDE CLIENT</h2>
+          <span class="invoice-id">N° ${so.id}</span>
+          <span class="invoice-date">Date : ${formatDate(so.date)}</span>
+          <div style="margin-top: 10px; display:flex; flex-direction:column; gap:4px;">
+            <span class="badge badge-info">Statut Commande : ${so.status}</span>
+            <span class="badge ${so.deliveryStatus === 'full' ? 'badge-success' : (so.deliveryStatus === 'partial' ? 'badge-warning' : 'badge-danger')}">
+              Livraison : ${so.deliveryStatus === 'full' ? 'Entièrement Livré' : (so.deliveryStatus === 'partial' ? 'Livraison Partielle' : 'Non Livré')}
+            </span>
+            <span class="badge ${so.invoiceStatus === 'full' ? 'badge-success' : (so.invoiceStatus === 'partial' ? 'badge-warning' : 'badge-danger')}">
+              Facturation : ${so.invoiceStatus === 'full' ? 'Entièrement Facturé' : (so.invoiceStatus === 'partial' ? 'Facturé Partiellement' : 'Non Facturé')}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="invoice-bill-to">
+        <div>
+          <div class="bill-section-title">Dépôt d'Expédition Réservé</div>
+          <div class="bill-client-info">
+            <h4>${wh.name}</h4>
+            <p>Politique : ${so.invoicingPolicy === 'order' ? 'Facturation à la commande' : 'Facturation à la livraison'}</p>
+          </div>
+        </div>
+        <div>
+          <div class="bill-section-title">Client Destinataire</div>
+          <div class="bill-client-info">
+            <h4>${client.name}</h4>
+            <p>${client.address}</p>
+            <p>${client.city}, Sénégal</p>
+            <p>Tél: ${client.phone}</p>
+          </div>
+        </div>
+      </div>
+
+      <table class="invoice-table">
+        <thead>
+          <tr>
+            <th style="width:40px; text-align:center;">#</th>
+            <th style="text-align:left;">Désignation</th>
+            <th style="text-align:right;">P.U HT</th>
+            <th style="text-align:center;">Qté Cde</th>
+            <th style="text-align:center; color:#10b981;">Qté Livrée</th>
+            <th style="text-align:center; color:#3b82f6;">Qté Facturée</th>
+            <th style="text-align:right;">Total HT</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+
+      <div class="invoice-summary-block">
+        <div class="invoice-notes">
+          <p><strong>Conditions logistiques :</strong></p>
+          <p>Les articles de cette commande sont réservés sur le stock du dépôt ${wh.name}.</p>
+        </div>
+        <div class="invoice-financials">
+          <div class="invoice-fin-row"><span>Sous-Total HT :</span><span>${formatFCFA(subtotalHt)}</span></div>
+          <div class="invoice-fin-row"><span>Remise :</span><span>-${formatFCFA(discount)}</span></div>
+          <div class="invoice-fin-row" style="font-weight:700;"><span>Net HT :</span><span>${formatFCFA(netHt)}</span></div>
+          <div class="invoice-fin-row"><span>TVA (${finalVatRate}%) :</span><span>${formatFCFA(tva)}</span></div>
+          <div class="invoice-fin-row total"><span>Total Commande TTC :</span><span>${formatFCFA(totalTtc)}</span></div>
+        </div>
+      </div>
+    `;
+
+  } else if (type === 'refund') {
+    const rf = state.refunds.find(r => r.id === docId);
+    if (!rf) return '';
+    const client = state.clients.find(c => c.id === rf.clientId) || { name: 'Client Inconnu', email: 'N/A', phone: 'N/A', city: 'N/A', address: 'N/A' };
+    const inv = state.orders.find(o => o.id === rf.invoiceId) || { items: [] };
+
+    let rowsHtml = '';
+    let totalHt = 0;
+    const items = rf.items && rf.items.length > 0 ? rf.items : (inv.items || []);
+    items.forEach((item, index) => {
+      const product = state.products.find(p => p.id === item.productId) || { name: 'Article retourné' };
+      const itemPrice = item.price || 0;
+      const itemQty = item.quantity || 1;
+      const rowTotal = itemPrice * itemQty;
+      totalHt += rowTotal;
+
+      rowsHtml += `
+        <tr>
+          <td style="text-align: center; width: 40px;">${index + 1}</td>
+          <td><strong>${product.name}</strong></td>
+          <td style="text-align: center;">${itemQty}</td>
+          <td style="text-align: right;">${formatFCFA(itemPrice)}</td>
+          <td style="text-align: right; font-weight:700; color:#ef4444;">-${formatFCFA(rowTotal)}</td>
+        </tr>
+      `;
+    });
+
+    const tva = totalHt * ((rf.tvaRate || 18) / 100);
+    const totalTtc = totalHt + tva;
+
+    let logoHtml = `<span class="invoice-brand">${comp.name}</span>`;
+    if (comp.logo) logoHtml = `<img src="${comp.logo}" class="invoice-logo-img" alt="${comp.name}">`;
+
+    return `
+      <div class="invoice-header">
+        <div class="invoice-logo-title">
+          ${logoHtml}
+          <span style="font-size:11px; font-weight:600; color:#ef4444; text-transform:uppercase;">AVOIR COMMERCIAL / NOTE DE CRÉDIT</span>
+          <div class="invoice-company-details" style="margin-top:10px;">
+            <p>${comp.address}</p>
+            <p>${comp.city}</p>
+          </div>
+        </div>
+        <div class="invoice-title-meta">
+          <h2 style="color:#ef4444;">AVOIR CLIENT</h2>
+          <span class="invoice-id">N° ${rf.id}</span>
+          <span class="invoice-date">Date : ${formatDate(rf.date)}</span>
+          <p style="margin-top:6px; font-size:12px; color:#62626e;">Réf Facture d'Origine : <strong>${rf.invoiceId}</strong></p>
+          <div style="margin-top: 10px;">
+            <span class="badge badge-success">Validé & Enregistré</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="invoice-bill-to">
+        <div>
+          <div class="bill-section-title">Motif du Remboursement / Avoir</div>
+          <div class="bill-client-info">
+            <p><strong>${rf.reason || 'Retour ou geste commercial'}</strong></p>
+            <p style="margin-top:4px; font-size:11px; color:#10b981;">
+              ${rf.restock ? '✓ Marchandises réintégrées en stock' : 'Sans impact sur le stock'}
+            </p>
+          </div>
+        </div>
+        <div>
+          <div class="bill-section-title">Client Bénéficiaire</div>
+          <div class="bill-client-info">
+            <h4>${client.name}</h4>
+            <p>${client.address}</p>
+            <p>${client.city}, Sénégal</p>
+          </div>
+        </div>
+      </div>
+
+      <table class="invoice-table">
+        <thead>
+          <tr>
+            <th style="width:40px; text-align:center;">#</th>
+            <th style="text-align:left;">Désignation</th>
+            <th style="text-align:center;">Qté Retournée</th>
+            <th style="text-align:right;">P.U HT</th>
+            <th style="text-align:right;">Crédit Total</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+
+      <div class="invoice-summary-block">
+        <div class="invoice-notes">
+          <p><strong>Mention comptable :</strong></p>
+          <p>Cet avoir crédite le compte du client et a été déduit du journal de trésorerie.</p>
+        </div>
+        <div class="invoice-financials">
+          <div class="invoice-fin-row" style="color:#ef4444;"><span>Total HT Crédité :</span><span>-${formatFCFA(totalHt)}</span></div>
+          <div class="invoice-fin-row" style="color:#ef4444;"><span>TVA (${rf.tvaRate || 18}%) :</span><span>-${formatFCFA(tva)}</span></div>
+          <div class="invoice-fin-row total" style="color:#ef4444;"><span>Total Avoir TTC :</span><span>-${formatFCFA(totalTtc)}</span></div>
+        </div>
+      </div>
+    `;
   }
   return '';
 }
@@ -2862,6 +4058,8 @@ function viewDocument(type, docId) {
   const modalTitle = document.getElementById('modal-invoice-viewer-title');
   if (type === 'invoice') modalTitle.textContent = 'Aperçu Facture Vente';
   else if (type === 'quote') modalTitle.textContent = 'Aperçu Devis Pro';
+  else if (type === 'sales_order') modalTitle.textContent = 'Aperçu Commande Client';
+  else if (type === 'refund') modalTitle.textContent = 'Aperçu Avoir Client';
   else if (type === 'po') modalTitle.textContent = 'Aperçu Commande Fournisseur';
   else if (type === 'reception') modalTitle.textContent = 'Aperçu Bon de Réception';
   else if (type === 'delivery') modalTitle.textContent = 'Aperçu Bon de Livraison Client';
@@ -2869,7 +4067,34 @@ function viewDocument(type, docId) {
   const actionsContainer = document.getElementById('invoice-special-actions-container');
   actionsContainer.innerHTML = '';
 
-  if (type === 'invoice') {
+  if (type === 'sales_order') {
+    const so = state.salesOrders.find(s => s.id === docId);
+    if (so && so.status !== 'Annulée') {
+      if (so.deliveryStatus !== 'full') {
+        const btnBL = document.createElement('button');
+        btnBL.className = 'btn btn-primary';
+        btnBL.style.padding = '6px 12px';
+        btnBL.style.fontSize = '13px';
+        btnBL.innerHTML = `<i data-lucide="truck" style="width:14px; height:14px; margin-right:4px;"></i> Créer BL`;
+        btnBL.onclick = () => {
+          document.getElementById('modal-invoice').classList.remove('active');
+          openAddDeliveryModal(docId);
+        };
+        actionsContainer.appendChild(btnBL);
+      }
+      if (so.invoiceStatus !== 'full') {
+        const btnInv = document.createElement('button');
+        btnInv.className = 'btn btn-primary';
+        btnInv.style.padding = '6px 12px';
+        btnInv.style.fontSize = '13px';
+        btnInv.style.background = '#10b981';
+        btnInv.style.borderColor = '#10b981';
+        btnInv.innerHTML = `<i data-lucide="receipt" style="width:14px; height:14px; margin-right:4px;"></i> Générer Facture`;
+        btnInv.onclick = () => createInvoiceFromSalesOrder(docId);
+        actionsContainer.appendChild(btnInv);
+      }
+    }
+  } else if (type === 'invoice') {
     const o = state.orders.find(ord => ord.id === docId);
     if (o && o.status !== 'Payée' && o.status !== 'Annulée') {
       const btn = document.createElement('button');
@@ -3336,11 +4561,24 @@ function setupEventHandlers() {
   document.getElementById('client-filter-city').addEventListener('change', renderClients);
   document.getElementById('btn-add-client').addEventListener('click', openAddClientModal);
 
-  // Recherche & filtres Devis / Factures (Onglet billing)
+  // Recherche & filtres Devis / Commandes / Factures / Avoirs / Caisse (Onglet billing)
   document.getElementById('quote-search').addEventListener('input', renderQuotes);
   document.getElementById('quote-filter-status').addEventListener('change', renderQuotes);
+  const soSearch = document.getElementById('so-search');
+  if (soSearch) soSearch.addEventListener('input', renderSalesOrders);
+  const soFilterStatus = document.getElementById('so-filter-status');
+  if (soFilterStatus) soFilterStatus.addEventListener('change', renderSalesOrders);
+
   document.getElementById('order-search').addEventListener('input', renderOrders);
   document.getElementById('order-filter-status').addEventListener('change', renderOrders);
+
+  const refundSearch = document.getElementById('refund-search');
+  if (refundSearch) refundSearch.addEventListener('input', renderRefunds);
+
+  const cashSearch = document.getElementById('cash-search');
+  if (cashSearch) cashSearch.addEventListener('input', renderCashJournal);
+  const cashFilterMethod = document.getElementById('cash-filter-method');
+  if (cashFilterMethod) cashFilterMethod.addEventListener('change', renderCashJournal);
 
   // Recherche & filtres sous-onglets d'inventaire
   document.getElementById('supplier-search').addEventListener('input', renderSuppliers);
@@ -3348,6 +4586,39 @@ function setupEventHandlers() {
   document.getElementById('reception-search').addEventListener('input', renderReceptions);
   document.getElementById('delivery-search').addEventListener('input', renderDeliveries);
   document.getElementById('delivery-filter-status').addEventListener('change', renderDeliveries);
+
+  const stockMoveSearch = document.getElementById('stock-move-search');
+  if (stockMoveSearch) stockMoveSearch.addEventListener('input', renderStockMoves);
+  const stockMoveFilterType = document.getElementById('stock-move-filter-type');
+  if (stockMoveFilterType) stockMoveFilterType.addEventListener('change', renderStockMoves);
+
+  // Bouton Ouvrir Transfert de stock
+  const btnOpenStockTransfer = document.getElementById('btn-open-stock-transfer');
+  if (btnOpenStockTransfer) btnOpenStockTransfer.addEventListener('click', openStockTransferModal);
+
+  // Fermetures nouveaux modaux
+  const modalSalesOrder = document.getElementById('modal-sales-order');
+  const btnCloseSalesOrder = document.getElementById('modal-sales-order-close');
+  if (btnCloseSalesOrder) btnCloseSalesOrder.addEventListener('click', () => modalSalesOrder.classList.remove('active'));
+
+  const modalRefund = document.getElementById('modal-refund');
+  const btnCloseRefund = document.getElementById('modal-refund-close');
+  const btnCancelRefund = document.getElementById('btn-cancel-refund');
+  if (btnCloseRefund) btnCloseRefund.addEventListener('click', () => modalRefund.classList.remove('active'));
+  if (btnCancelRefund) btnCancelRefund.addEventListener('click', () => modalRefund.classList.remove('active'));
+
+  const modalStockTransfer = document.getElementById('modal-stock-transfer');
+  const btnCloseStockTransfer = document.getElementById('modal-stock-transfer-close');
+  const btnCancelStockTransfer = document.getElementById('btn-cancel-transfer');
+  if (btnCloseStockTransfer) btnCloseStockTransfer.addEventListener('click', () => modalStockTransfer.classList.remove('active'));
+  if (btnCancelStockTransfer) btnCancelStockTransfer.addEventListener('click', () => modalStockTransfer.classList.remove('active'));
+
+  // Soumissions formulaires Avoir et Transfert
+  const formRefund = document.getElementById('form-refund');
+  if (formRefund) formRefund.addEventListener('submit', saveRefund);
+
+  const formStockTransfer = document.getElementById('form-stock-transfer');
+  if (formStockTransfer) formStockTransfer.addEventListener('submit', saveStockTransfer);
 
   document.getElementById('btn-add-supplier').addEventListener('click', openAddSupplierModal);
   document.getElementById('btn-add-supplier-fast').addEventListener('click', openAddSupplierModal);

@@ -312,9 +312,11 @@
                   <th>Code / ID</th>
                   <th>Désignation</th>
                   <th>Catégorie</th>
-                  <th>Prix Unitaire</th>
-                  <th>Stock Actuel</th>
-                  <th>Stock Min</th>
+                  <th>Prix Vente</th>
+                  <th>Coût (PMP)</th>
+                  <th>Stock Réel</th>
+                  <th>Réservé</th>
+                  <th>Stock Dispo</th>
                   <th>Statut</th>
                   <th>Actions</th>
                 </tr>
@@ -368,60 +370,28 @@
         </div>
       </section>
 
-      <!-- View 4: Ventes & Devis (Regroupement) -->
+      <!-- View 4: Ventes & Facturation (Flux ERP Complet) -->
       <section id="billing" class="tab-content">
         <!-- Sub-tabs navigation -->
         <div class="sub-tabs-container">
           <button class="sub-tab-btn active" data-subtab="quotes-list">
-            <i data-lucide="file-text"></i> Devis
+            <i data-lucide="file-text"></i> Devis Pro
+          </button>
+          <button class="sub-tab-btn" data-subtab="sales-orders">
+            <i data-lucide="shopping-bag"></i> Commandes Clients (CC)
           </button>
           <button class="sub-tab-btn" data-subtab="invoices">
-            <i data-lucide="file-check"></i> Factures
+            <i data-lucide="file-check"></i> Factures Ventes
+          </button>
+          <button class="sub-tab-btn" data-subtab="refunds">
+            <i data-lucide="corner-down-left"></i> Avoirs & Retours
+          </button>
+          <button class="sub-tab-btn" data-subtab="cash-journal">
+            <i data-lucide="wallet"></i> Journal de Caisse
           </button>
         </div>
 
-        <!-- Sub-tab 1: Invoices -->
-        <div id="sub-tab-invoices" class="sub-tab-content">
-          <div class="glass-card">
-            <div class="search-filter-row">
-              <div class="search-input-wrapper">
-                <i data-lucide="search"></i>
-                <input type="text" class="search-input" id="order-search" placeholder="Rechercher par N° Facture ou client...">
-              </div>
-              <div class="filters-wrapper">
-                <select class="select-input" id="order-filter-status">
-                  <option value="all">Tous les statuts</option>
-                  <option value="Payée">Payée</option>
-                  <option value="En attente">En attente</option>
-                  <option value="Partiellement Payée">Partiellement Payée</option>
-                  <option value="Annulée">Annulée</option>
-                </select>
-              </div>
-            </div>
-            <div class="table-responsive">
-              <table class="fox-table">
-                <thead>
-                  <tr>
-                    <th>N° Facture</th>
-                    <th>Date</th>
-                    <th>Client</th>
-                    <th>Articles</th>
-                    <th>Remise</th>
-                    <th>TVA (18%)</th>
-                    <th>Montant TTC</th>
-                    <th>Statut</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="orders-table-body">
-                  <!-- Dynamically populated -->
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <!-- Sub-tab 2: Devis -->
+        <!-- Sub-tab 1: Devis -->
         <div id="sub-tab-quotes-list" class="sub-tab-content active">
           <div class="glass-card">
             <div class="search-filter-row">
@@ -461,6 +431,180 @@
             </div>
           </div>
         </div>
+
+        <!-- Sub-tab 2: Commandes Clients (Sales Orders) -->
+        <div id="sub-tab-sales-orders" class="sub-tab-content">
+          <div class="glass-card">
+            <div class="search-filter-row">
+              <div class="search-input-wrapper">
+                <i data-lucide="search"></i>
+                <input type="text" class="search-input" id="so-search" placeholder="Rechercher par N° Commande, client ou devis...">
+              </div>
+              <div class="filters-wrapper">
+                <select class="select-input" id="so-filter-status">
+                  <option value="all">Tous les statuts</option>
+                  <option value="Confirmée">Confirmée</option>
+                  <option value="En cours">En cours</option>
+                  <option value="Terminée">Terminée</option>
+                  <option value="Annulée">Annulée</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="fox-table">
+                <thead>
+                  <tr>
+                    <th>N° Commande</th>
+                    <th>Date</th>
+                    <th>Client</th>
+                    <th>Dépôt Expédition</th>
+                    <th>Articles</th>
+                    <th>Total TTC</th>
+                    <th>Livraison</th>
+                    <th>Facturation</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="so-table-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sub-tab 3: Factures de Vente -->
+        <div id="sub-tab-invoices" class="sub-tab-content">
+          <div class="glass-card">
+            <div class="search-filter-row">
+              <div class="search-input-wrapper">
+                <i data-lucide="search"></i>
+                <input type="text" class="search-input" id="order-search" placeholder="Rechercher par N° Facture, commande ou client...">
+              </div>
+              <div class="filters-wrapper">
+                <select class="select-input" id="order-filter-status">
+                  <option value="all">Tous les statuts</option>
+                  <option value="Payée">Payée</option>
+                  <option value="En attente">En attente</option>
+                  <option value="Partiellement Payée">Partiellement Payée</option>
+                  <option value="Annulée">Annulée</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="fox-table">
+                <thead>
+                  <tr>
+                    <th>N° Facture</th>
+                    <th>Date</th>
+                    <th>Client</th>
+                    <th>Réf Commande / BL</th>
+                    <th>Articles</th>
+                    <th>Montant TTC</th>
+                    <th>Reste Dû</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="orders-table-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sub-tab 4: Avoirs & Retours (Refunds) -->
+        <div id="sub-tab-refunds" class="sub-tab-content">
+          <div class="glass-card">
+            <div class="search-filter-row">
+              <div class="search-input-wrapper">
+                <i data-lucide="search"></i>
+                <input type="text" class="search-input" id="refund-search" placeholder="Rechercher par N° Avoir, facture ou client...">
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="fox-table">
+                <thead>
+                  <tr>
+                    <th>N° Avoir</th>
+                    <th>Date</th>
+                    <th>Facture Associée</th>
+                    <th>Client</th>
+                    <th>Motif</th>
+                    <th>Réintégration Stock</th>
+                    <th>Montant TTC Crédité</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="refunds-table-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sub-tab 5: Journal de Caisse & Trésorerie -->
+        <div id="sub-tab-cash-journal" class="sub-tab-content">
+          <div class="glass-card">
+            <!-- Totals Header for Cash Register -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--card-border);">
+              <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); padding: 12px 16px; border-radius: var(--radius-sm);">
+                <span style="font-size: 11px; color: var(--success); font-weight: 700; text-transform: uppercase;">Total Encaissements</span>
+                <h3 id="cash-journal-total-in" style="font-size: 18px; color: var(--success); margin-top: 4px;">0 FCFA</h3>
+              </div>
+              <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2); padding: 12px 16px; border-radius: var(--radius-sm);">
+                <span style="font-size: 11px; color: var(--danger); font-weight: 700; text-transform: uppercase;">Total Décaissements / Avoirs</span>
+                <h3 id="cash-journal-total-out" style="font-size: 18px; color: var(--danger); margin-top: 4px;">0 FCFA</h3>
+              </div>
+              <div style="background: rgba(255, 107, 0, 0.08); border: 1px solid rgba(255, 107, 0, 0.2); padding: 12px 16px; border-radius: var(--radius-sm);">
+                <span style="font-size: 11px; color: var(--fox-orange); font-weight: 700; text-transform: uppercase;">Solde Net Trésorerie</span>
+                <h3 id="cash-journal-balance" style="font-size: 18px; color: var(--fox-orange); margin-top: 4px;">0 FCFA</h3>
+              </div>
+            </div>
+
+            <div class="search-filter-row">
+              <div class="search-input-wrapper">
+                <i data-lucide="search"></i>
+                <input type="text" class="search-input" id="cash-search" placeholder="Rechercher écriture par libellé, référence ou tiers...">
+              </div>
+              <div class="filters-wrapper">
+                <select class="select-input" id="cash-filter-method">
+                  <option value="all">Tous les moyens de paiement</option>
+                  <option value="Wave">Wave</option>
+                  <option value="Orange Money">Orange Money</option>
+                  <option value="Espèces">Espèces</option>
+                  <option value="Virement Bancaire">Virement Bancaire</option>
+                  <option value="Chèque">Chèque</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="fox-table">
+                <thead>
+                  <tr>
+                    <th>Réf Écriture</th>
+                    <th>Date & Heure</th>
+                    <th>Sens</th>
+                    <th>Libellé Opération</th>
+                    <th>Moyen de Règlement</th>
+                    <th>Réf Document</th>
+                    <th>Client / Tiers</th>
+                    <th>Montant</th>
+                  </tr>
+                </thead>
+                <tbody id="cash-journal-table-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
       </section>
 
       <!-- View 5: Inventory & Logistics Tab -->
@@ -478,6 +622,9 @@
           </button>
           <button class="sub-tab-btn" data-subtab="deliveries">
             <i data-lucide="truck"></i> Bons de Livraison (BL)
+          </button>
+          <button class="sub-tab-btn" data-subtab="warehouses">
+            <i data-lucide="warehouse"></i> Dépôts & Mouvements
           </button>
         </div>
 
@@ -618,6 +765,62 @@
             </div>
           </div>
         </div>
+
+        <!-- Sub-tab 5: Dépôts & Mouvements de Stock -->
+        <div id="sub-tab-warehouses" class="sub-tab-content">
+          <div class="glass-card" style="margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <h3 style="font-size: 15px; font-weight: 700; color: white; display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="warehouse" style="color: var(--fox-orange);"></i> Réseau des Dépôts & Entrepôts
+              </h3>
+              <button class="btn btn-secondary" id="btn-open-stock-transfer" style="font-size: 13px; padding: 8px 14px;">
+                <i data-lucide="arrow-left-right"></i> Transférer du Stock
+              </button>
+            </div>
+            
+            <div id="warehouses-cards-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px;">
+              <!-- Dynamically populated warehouses cards -->
+            </div>
+          </div>
+
+          <div class="glass-card">
+            <div class="search-filter-row">
+              <div class="search-input-wrapper">
+                <i data-lucide="search"></i>
+                <input type="text" class="search-input" id="stock-move-search" placeholder="Rechercher mouvement par article, référence doc ou dépôt...">
+              </div>
+              <div class="filters-wrapper">
+                <select class="select-input" id="stock-move-filter-type">
+                  <option value="all">Tous les mouvements</option>
+                  <option value="delivery">Sorties Livraisons Client</option>
+                  <option value="reception">Entrées Réceptions Fournisseur</option>
+                  <option value="refund_return">Retours Clients (Avoirs)</option>
+                  <option value="transfer">Transferts Inter-Dépôts</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="fox-table">
+                <thead>
+                  <tr>
+                    <th>Réf Mouvement</th>
+                    <th>Date & Heure</th>
+                    <th>Article</th>
+                    <th>Dépôt</th>
+                    <th>Type de Flux</th>
+                    <th>Quantité</th>
+                    <th>Valorisation (PMP)</th>
+                    <th>Réf Document</th>
+                  </tr>
+                </thead>
+                <tbody id="stock-moves-table-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- View 6: Settings -->
@@ -737,6 +940,17 @@
 
               <div class="form-row">
                 <div class="form-group">
+                  <label for="settings-prefix-so">Préfixe Commande Client</label>
+                  <input type="text" class="form-control" id="settings-prefix-so" required placeholder="ex: CC">
+                </div>
+                <div class="form-group">
+                  <label for="settings-prefix-refund">Préfixe Avoirs</label>
+                  <input type="text" class="form-control" id="settings-prefix-refund" required placeholder="ex: AV">
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
                   <label for="settings-prefix-po">Préfixe Cde Fournisseur</label>
                   <input type="text" class="form-control" id="settings-prefix-po" required placeholder="ex: CF">
                 </div>
@@ -744,6 +958,17 @@
                   <label for="settings-prefix-reception">Préfixe Réception</label>
                   <input type="text" class="form-control" id="settings-prefix-reception" required placeholder="ex: BR">
                 </div>
+              </div>
+
+              <div class="form-group" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;">
+                <label for="settings-invoicing-policy" style="font-weight: 700; color: white;">Politique de Facturation Principale</label>
+                <select class="select-input" id="settings-invoicing-policy" style="width: 100%; padding: 10px; margin-top: 6px;">
+                  <option value="delivery" selected>Facturation à la Livraison (Basée sur les quantités réellement livrées par BL)</option>
+                  <option value="order">Facturation à la Commande (Facturation intégrale dès confirmation de la commande)</option>
+                </select>
+                <small style="color: var(--fox-muted); font-size: 11px; display: block; margin-top: 4px;">
+                  En mode "À la livraison", une facture ne peut être générée que pour les articles ayant fait l'objet d'un Bon de Livraison expédié.
+                </small>
               </div>
             </div>
             
@@ -834,7 +1059,15 @@
                 <label for="order-type-select">Type de Document</label>
                 <select class="select-input" id="order-type-select" style="width: 100%; margin-top: 8px; padding: 12px; font-weight: 700; color: white; background-color: var(--fox-dark-accent); border-color: var(--fox-orange);">
                   <option value="Facture">Facture Directe</option>
+                  <option value="Commande" selected>Commande Client (CC)</option>
                   <option value="Devis">Devis Pro</option>
+                </select>
+              </div>
+
+              <div class="form-group" id="order-warehouse-group" style="margin-bottom: 0; grid-column: span 2;">
+                <label for="order-warehouse-select"><i data-lucide="warehouse" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;"></i> Dépôt / Entrepôt d'Expédition</label>
+                <select class="select-input" id="order-warehouse-select" style="width: 100%; margin-top: 8px; padding: 10px;">
+                  <!-- Dynamically populated from state.warehouses -->
                 </select>
               </div>
             </div>
@@ -1274,6 +1507,147 @@
           <button type="button" class="btn btn-secondary" id="btn-cancel-delivery">Annuler</button>
           <button type="submit" class="btn btn-primary" id="btn-save-delivery">
             <i data-lucide="check"></i> Enregistrer le Bon de Livraison
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Visualiseur et Actions Commande Client (CC) -->
+  <div class="modal" id="modal-sales-order">
+    <div class="modal-dialog" style="max-width: 820px;">
+      <div class="modal-header">
+        <h3 style="display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="shopping-bag" style="color: var(--fox-orange);"></i>
+          <span id="modal-so-title">Commande Client</span>
+        </h3>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button class="btn btn-primary" id="btn-so-quick-delivery" style="padding: 6px 12px; font-size: 13px;">
+            <i data-lucide="truck"></i> Créer Bon de Livraison
+          </button>
+          <button class="btn btn-primary" id="btn-so-quick-invoice" style="padding: 6px 12px; font-size: 13px; background: #10b981;">
+            <i data-lucide="receipt"></i> Créer Facture
+          </button>
+          <button class="btn btn-secondary" id="btn-print-so" style="padding: 6px 12px; font-size: 13px;">
+            <i data-lucide="printer"></i> Imprimer
+          </button>
+          <button class="btn-close" id="modal-sales-order-close"><i data-lucide="x"></i></button>
+        </div>
+      </div>
+      <div class="modal-body" style="background-color: #f4f4f6; padding: 20px;">
+        <div class="invoice-card" id="sales-order-details-card">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Créer un Avoir / Retour Client -->
+  <div class="modal" id="modal-refund">
+    <div class="modal-dialog" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3 style="display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="corner-down-left" style="color: var(--fox-orange);"></i> Établir un Avoir Client (Remboursement / Retour)
+        </h3>
+        <button class="btn-close" id="modal-refund-close"><i data-lucide="x"></i></button>
+      </div>
+      <form id="form-refund">
+        <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+          <div class="form-row">
+            <div class="form-group" style="flex: 1;">
+              <label for="refund-invoice-select">Facture d'origine *</label>
+              <select class="select-input" id="refund-invoice-select" required style="width: 100%; padding: 10px; margin-top: 6px;">
+                <!-- Dynamically populated -->
+              </select>
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label for="refund-date">Date de l'Avoir *</label>
+              <input type="date" class="form-control" id="refund-date" required style="margin-top: 6px; padding: 9px;">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="refund-reason">Motif de l'Avoir / Justificatif *</label>
+            <input type="text" class="form-control" id="refund-reason" required placeholder="ex: Article défectueux, erreur de commande, geste commercial" style="margin-top: 6px;">
+          </div>
+
+          <div class="form-group">
+            <label for="refund-amount">Montant Total TTC de l'Avoir (FCFA) *</label>
+            <input type="number" class="form-control" id="refund-amount" required min="1" placeholder="Montant en FCFA" style="margin-top: 6px;">
+          </div>
+
+          <!-- Stock Restock Options -->
+          <div style="background: rgba(255, 107, 0, 0.05); border: 1px dashed var(--fox-orange); border-radius: var(--radius-sm); padding: 14px; margin-top: 15px;">
+            <label class="switch-container" style="cursor: pointer; display: flex; align-items: center; gap: 10px;">
+              <input type="checkbox" class="switch-checkbox" id="refund-restock-checkbox" checked>
+              <span style="font-weight: 700; color: white;">Réintégrer les articles retournés en stock physique</span>
+            </label>
+            <div id="refund-warehouse-container" style="margin-top: 12px;">
+              <label for="refund-warehouse-select" style="font-size: 12px; color: var(--fox-muted);">Dépôt de réintégration :</label>
+              <select class="select-input" id="refund-warehouse-select" style="width: 100%; margin-top: 4px; padding: 8px;">
+                <!-- Warehouses -->
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-refund">Annuler</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-refund">
+            <i data-lucide="check"></i> Valider et Émettre l'Avoir
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Transfert de Stock Inter-Dépôts -->
+  <div class="modal" id="modal-stock-transfer">
+    <div class="modal-dialog" style="max-width: 550px;">
+      <div class="modal-header">
+        <h3 style="display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="arrow-left-right" style="color: var(--fox-orange);"></i> Transfert Inter-Dépôts
+        </h3>
+        <button class="btn-close" id="modal-stock-transfer-close"><i data-lucide="x"></i></button>
+      </div>
+      <form id="form-stock-transfer">
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group" style="flex: 1;">
+              <label for="transfer-source-select">Dépôt Source (Origine) *</label>
+              <select class="select-input" id="transfer-source-select" required style="width: 100%; padding: 10px; margin-top: 6px;">
+                <!-- Warehouses -->
+              </select>
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label for="transfer-dest-select">Dépôt Destination (Cible) *</label>
+              <select class="select-input" id="transfer-dest-select" required style="width: 100%; padding: 10px; margin-top: 6px;">
+                <!-- Warehouses -->
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="transfer-product-select">Produit à transférer *</label>
+            <select class="select-input" id="transfer-product-select" required style="width: 100%; padding: 10px; margin-top: 6px;">
+              <!-- Products -->
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group" style="flex: 1;">
+              <label for="transfer-qty-input">Quantité à déplacer *</label>
+              <input type="number" class="form-control" id="transfer-qty-input" required min="1" placeholder="1" style="margin-top: 6px;">
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label for="transfer-date-input">Date de Transfert *</label>
+              <input type="date" class="form-control" id="transfer-date-input" required style="margin-top: 6px; padding: 9px;">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-transfer">Annuler</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-transfer">
+            <i data-lucide="check"></i> Valider le Transfert
           </button>
         </div>
       </form>
