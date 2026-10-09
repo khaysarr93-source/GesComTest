@@ -267,8 +267,31 @@ function setupNavigation() {
       
       updateHeaderTitle(tabId, pageTitle, pageSubtitle);
       triggerTabRender(tabId);
+
+      // Auto-fermer le menu mobile lors d'un clic de navigation
+      closeMobileSidebar();
     });
   });
+
+  // Gestion du menu mobile (Tiroir off-canvas)
+  const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+  const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
+  const sidebarOverlay = document.getElementById('sidebar-overlay');
+  const appSidebar = document.getElementById('app-sidebar');
+
+  function openMobileSidebar() {
+    if (appSidebar) appSidebar.classList.add('mobile-open');
+    if (sidebarOverlay) sidebarOverlay.classList.add('active');
+  }
+
+  function closeMobileSidebar() {
+    if (appSidebar) appSidebar.classList.remove('mobile-open');
+    if (sidebarOverlay) sidebarOverlay.classList.remove('active');
+  }
+
+  if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', openMobileSidebar);
+  if (sidebarCloseBtn) sidebarCloseBtn.addEventListener('click', closeMobileSidebar);
+  if (sidebarOverlay) sidebarOverlay.addEventListener('click', closeMobileSidebar);
 
   // Gestion de tous les sous-onglets (Inventaire ET Facturation/Devis)
   const subTabBtns = document.querySelectorAll('.sub-tab-btn');
@@ -298,6 +321,7 @@ function setupNavigation() {
   document.getElementById('header-new-sale-btn').addEventListener('click', () => {
     const newSaleTab = document.querySelector('.nav-item[data-tab="new-order"]');
     if (newSaleTab) newSaleTab.click();
+    closeMobileSidebar();
   });
 }
 

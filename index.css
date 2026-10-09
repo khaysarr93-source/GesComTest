@@ -248,6 +248,8 @@ button, input, select, textarea {
   flex-direction: column;
   padding: 24px 40px;
   overflow-y: auto;
+  width: calc(100vw - var(--sidebar-width));
+  max-width: 100%;
 }
 
 /* Header */
@@ -258,6 +260,72 @@ button, input, select, textarea {
   margin-bottom: 32px;
   padding-bottom: 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  gap: 16px;
+}
+
+.header-left-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.mobile-menu-btn {
+  display: none;
+  background: var(--bg-secondary);
+  border: 1px solid var(--card-border);
+  color: var(--fox-cream);
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-md);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.mobile-menu-btn:hover {
+  background: var(--fox-orange-light);
+  color: var(--fox-orange);
+  border-color: var(--fox-orange);
+}
+
+.sidebar-close-btn {
+  display: none;
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: var(--fox-muted);
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.sidebar-close-btn:hover {
+  color: var(--fox-orange);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  z-index: 99;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.sidebar-overlay.active {
+  display: block;
+  opacity: 1;
 }
 
 .header-title-area h1 {
@@ -1435,6 +1503,309 @@ button, input, select, textarea {
 
 #cloud-sync-badge.cloud-offline i {
   color: var(--fox-muted);
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN & MOBILE-FIRST OPTIMIZATIONS
+   ========================================================================== */
+
+/* Tablette & petits écrans (<= 1024px) */
+@media screen and (max-width: 1024px) {
+  .dashboard-layout {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .order-creation-container {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .order-summary-sidebar {
+    position: static;
+    top: auto;
+  }
+
+  .main-content {
+    padding: 20px 24px;
+  }
+}
+
+/* Écrans mobiles & tablettes en portrait (<= 768px) */
+@media screen and (max-width: 768px) {
+  /* Layout global */
+  .app-container {
+    overflow-x: hidden;
+  }
+
+  /* Sidebar off-canvas mobile */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 280px;
+    bottom: 0;
+    z-index: 1000;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(280px);
+  }
+
+  .sidebar-close-btn {
+    display: inline-flex;
+  }
+
+  .mobile-menu-btn {
+    display: inline-flex;
+  }
+
+  /* Contenu principal prend 100% de la largeur */
+  .main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding: 16px 14px 40px 14px !important;
+  }
+
+  /* Header mobile */
+  .main-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+  }
+
+  .header-left-group {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .header-title-area h1 {
+    font-size: 20px;
+  }
+
+  .header-title-area p {
+    font-size: 11px;
+  }
+
+  .header-actions {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: space-between;
+  }
+
+  .header-actions .date-badge {
+    padding: 6px 10px;
+    font-size: 11px;
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .header-actions .btn {
+    padding: 8px 12px;
+    font-size: 12px;
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  /* Cartes KPIs Dashboard */
+  .card-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .kpi-card {
+    padding: 14px;
+    border-radius: var(--radius-md);
+  }
+
+  .kpi-title {
+    font-size: 10px;
+  }
+
+  .kpi-value {
+    font-size: 18px;
+  }
+
+  .kpi-icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  /* Sous-onglets défilables horizontalement */
+  .sub-tabs-container {
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 8px;
+    gap: 6px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
+  }
+
+  .sub-tabs-container::-webkit-scrollbar {
+    display: none; /* Chrome, Safari */
+  }
+
+  .sub-tab-btn {
+    padding: 7px 12px;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+
+  /* Barres de recherche et filtres */
+  .search-filter-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .search-input-wrapper {
+    width: 100%;
+    max-width: none;
+  }
+
+  .filters-wrapper {
+    width: 100%;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .filters-wrapper .select-input,
+  .filters-wrapper .btn {
+    width: 100%;
+  }
+
+  /* Formulaires et grilles en 1 colonne */
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  /* Modaux pleine largeur sur mobile */
+  .modal-dialog {
+    width: 95% !important;
+    max-width: 95% !important;
+    max-height: 90vh !important;
+    margin: 10px;
+    border-radius: var(--radius-md);
+  }
+
+  .modal-header {
+    padding: 14px 16px;
+  }
+
+  .modal-header h3 {
+    font-size: 15px;
+  }
+
+  .modal-body {
+    padding: 16px;
+    max-height: calc(90vh - 120px) !important;
+  }
+
+  .modal-footer {
+    padding: 12px 16px;
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .modal-footer .btn {
+    width: 100%;
+  }
+
+  /* Panier / Cart Items sur mobile */
+  .cart-item {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .cart-item-total {
+    text-align: left;
+  }
+
+  /* Order Creation selector headers */
+  .order-creation-main .glass-card {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Tableau de bord visuel & Graphique */
+  .chart-container {
+    height: 240px;
+  }
+
+  /* Tables défilables avec indication tactile */
+  .table-responsive {
+    border-radius: var(--radius-sm);
+    box-shadow: inset 0 0 8px rgba(0,0,0,0.4);
+    margin-bottom: 12px;
+  }
+
+  .fox-table th,
+  .fox-table td {
+    padding: 10px 10px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  /* Fiches et détails de documents (Facture/Devis/BL) */
+  .invoice-card {
+    padding: 16px !important;
+  }
+
+  .invoice-header,
+  .invoice-bill-to {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .invoice-summary-block {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  /* Grille des produits dans l'onglet commande */
+  .product-picker-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .product-picker-card {
+    padding: 10px !important;
+  }
+
+  /* Toasts */
+  .toast-container {
+    top: 12px;
+    right: 12px;
+    left: 12px;
+  }
+
+  .toast {
+    min-width: auto;
+    max-width: 100%;
+  }
+}
+
+/* Très petits écrans / Smartphones étroits (<= 480px) */
+@media screen and (max-width: 480px) {
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .header-actions .date-badge {
+    display: none !important; /* Masquer date/heure complète pour préserver l'espace action */
+  }
+
+  .header-actions .btn {
+    width: 100%;
+  }
 }
 
 /* UNIFIED PRINT STYLING */

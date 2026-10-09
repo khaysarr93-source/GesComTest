@@ -30,7 +30,7 @@
   <div class="app-container">
     
     <!-- Sidebar Navigation -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="app-sidebar">
       <div class="logo-container">
         <div class="logo-icon" id="sidebar-logo-container">
           <!-- Custom default SVG or dynamic Base64 Logo will be rendered by JS -->
@@ -41,6 +41,9 @@
           </svg>
         </div>
         <div class="logo-text" id="sidebar-company-name-text">FOX GESCOM</div>
+        <button class="sidebar-close-btn" id="sidebar-close-btn" aria-label="Fermer menu">
+          <i data-lucide="x"></i>
+        </button>
       </div>
       
       <nav class="nav-menu">
@@ -97,14 +100,22 @@
       </div>
     </aside>
 
+    <!-- Overlay backdrop for mobile sidebar -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
     <!-- Main Content Area -->
     <main class="main-content">
       
       <!-- Top Header -->
       <header class="main-header">
-        <div class="header-title-area">
-          <h1 id="page-title">Tableau de bord</h1>
-          <p id="page-subtitle">Aperçu global de l'activité commerciale</p>
+        <div class="header-left-group">
+          <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Ouvrir le menu">
+            <i data-lucide="menu"></i>
+          </button>
+          <div class="header-title-area">
+            <h1 id="page-title">Tableau de bord</h1>
+            <p id="page-subtitle">Aperçu global de l'activité commerciale</p>
+          </div>
         </div>
         
         <div class="header-actions">
